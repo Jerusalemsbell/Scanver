@@ -358,7 +358,7 @@ class PortScan(object):
         return list(Nscan().ping(set(hosts)))
 
     def port(self,host,port):
-        logging.load('[scan %s - %s    ]'%(host,port))
+        #logging.load('[scan %s - %s    ]'%(host,port))
         isopen = False
         data = b''
         s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)

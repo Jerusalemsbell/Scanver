@@ -18,7 +18,7 @@ from lib.dns.resolver import Resolver
 
 from core.websearch import BaiduEngine,SogouEngine,SoEngine,BingEngine
 from core.plugin import PluginsManage,BaseHttpPlugin,BaseWebPlugin,BaseHostPlugin
-from core.crawler import Crawler
+from core.crawler1 import Crawler
 #from core.nmapscan import PortScan
 from core.portscan import PortScan
 from core.util import gethosts,getfiles,getports,getdomain,CoroutinePool
@@ -56,7 +56,6 @@ class BaseScan(object):
         int(self.args.get('level',1))       #是否扫描POST请求
         str(self.args.get('plug',''))       #扫描的插件
         dict(self.args.get('headers',"{}")) #自定义请求头
-
         '''
     def scan(self):
         pass
@@ -67,7 +66,6 @@ class BaseScan(object):
         self.Q.task_code = 'working'
         self.Q.task_pid = str(os.getpid())
         self.Q.save()
-        print(self.Q.task_pid)
         try:
             self.auths = self.get_auth()
             self.scan()
@@ -102,13 +100,13 @@ class BaseScan(object):
 
     def payloadverify(self,plug,host):
         '''插件验证'''
-        logging.info('check %s-%s-%s-%s-%s'%(plug.__class__,host.host,host.port))               
+        logging.info('check %s-%s-%s'%(plug.__class__,host.host,host.port))               
         filter = int(self.args.get('filter',1)) #是否需要过滤、
         try:
             socket.setdefaulttimeout(360)
             if not filter or plug.filter(host):
                 logging.info('filter %s-%s-%s-%s-%s'%(plug.__class__,host.host,host.port))
-                for user,pwd in self.auths if plug.BRUTE else [('','123456')]:
+                for user,pwd in self.auths if plug.BRUTE else [(None,'123456')]:
                     if user:
                         verify = plug.verify(host,user=user,pwd=pwd)
                     else:
@@ -233,20 +231,20 @@ class HttpScan(BaseScan):
 
     def scan(self):
         level = int(self.args.get('level',1)) #post 扫描
+        headers = json.loads(self.args.get('headers',"{}"))
+        proxy= json.loads(self.args.get('proxy',"{}"))
+        #{'http':'http://127.0.0.1:1111','https':'http://127.0.0.1:1111'}
 
         if not self.target.startswith(('http','HTTP')):
             self.target = 'http://' + self.target
         if not self.target.endswith('/'):
             self.target += '/'
-        '''
+
         for target in gethosts(self.target):
             self.portscan(target)
-            pass
-        '''
-        headers = json.loads(self.args.get('headers',"{}"))
-        self.crawle = Crawler(self.target,headers=headers)
-        self.crawle.settings.update(level=level)
-        #self.crawle.settings.update(proxy={'http':'http://127.0.0.1:1111','https':'http://127.0.0.1:1111'})
+        self.crawle = Crawler(self.target)
+        #self.crawle.settings.update(level=level)
+        #self.crawle.settings.update()
         self.crawle.settings.update(self.args)
 
         th=[]
@@ -269,16 +267,13 @@ class ServiceScan(BaseScan):
         for target in [self.target] if ping else gethosts(self.target):
             self.portscan(target)
 
-        '''
         MP = models.PortResult
         sw = MP.port_type != 'tcp/http'
         sw &= MP.service_name == 'http'
-        #pool = CoroutinePool(10)
+        pool = CoroutinePool(10)
         for q in MP.select().where(sw):
-            #pool.spawn(self.selecthttp,q)
-            self.selecthttp(q)
-        #pool.join()
-        '''
+            pool.spawn(self.selecthttp,q)
+        pool.join()
 
 class HostsScan(BaseScan):
     def scan(self):
@@ -286,11 +281,9 @@ class HostsScan(BaseScan):
         MP = models.Project
         MH = models.HostResult
         MR = models.PortResult
-        '''
         ping = int(self.args.get('ping',0))
         for target in [self.target] if ping else gethosts(self.target):
             self.portscan(target)
-        '''
         ret = []
         payloads = BaseHostPlugin.payloads() + BaseWebPlugin.payloads()
         for plug in payloads:

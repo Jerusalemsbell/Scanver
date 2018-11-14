@@ -10,73 +10,137 @@ import re
 import os
 import sys
 import queue
+import threading
 import urllib.parse as urlparse
-'''
-from lib import requests
+from requests import Session,Request
 from core.util import CoroutinePool as ThreadPool
 from core.cmsfind import AppFind
 from core.log import logging
 from core.base import BaseWebSite,ConnectionError
 import settings
-'''
-#APP = AppFind(settings.DATAPATH + '/appdata.json')
 
-class BaseRequest(requests.Request):
+APP = AppFind(settings.DATAPATH + '/appdata.json')
+
+class BaseRequest(object):
     '''定义一个http请求的基类'''
-    def __init__(self,*args,**kwargs):
-        super(BaseRequest).__init__(Request,*args,**kwargs)
-        
+    def __init__(self,url,data={},method='GET',headers={},
+        files={},cookies={},auth=None,hooks=None, json=None,
+        session=None,proxy={}):
+        if url and url.startswith('//'):
+            url = 'http:'+url
+        if url and not url.upper().startswith('HTTP'):
+            url = 'http://%s'%url
+        self.url    = url
+        self.data   = data
+        self.method = method.strip()
+        self.version= 'HTTP/1.1'
+        parser      = urlparse.urlsplit(self.url)
+        self.scheme = parser.scheme #https
+        self.netloc = parser.netloc #www.baidu.com
+        self.path   = parser.path   #/query.php
+        query       = parser.query  #a=1&b=2
+        self.headers= {
+            "User-Agent":"Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.87 Safari/537.36",
+            "Accept-Encoding":"gzip, deflate, sdch",
+            "Accept-Language":"zh-CN,zh;q=0.8",
+            "Connection":"keep-alive",
+            "Referer":'%s://%s/'%(self.scheme,self.netloc),}
+        self.headers.update(headers)
+        self.query  = {}
+        if query:
+           self.query = dict([q.split('=')[:2] for q in query.split('&') if '=' in q])
+        if data and method == 'GET':
+            self.method = 'POST'
+        self.files  = [] if files is None else files 
+        self.auth   = auth 
+        self.json   = json
+        self.cookies= cookies
+        self.session = session or Session() 
+        self.proxy   = proxy
+
+    def __repr__(self):
+        s=[]
+        s.append("%s %s %s"%(
+            self.method.upper(),
+            '%s?%s'%(self.path,
+                '&'.join(['%s=%s'%(k,v) for k,v in self.query.items()])) \
+                if self.query else self.path,
+            self.version))
+        s.append('Host: %s'%(self.netloc))
+        for k,v in self.headers.items():
+            s.append("%s: %s"%(k,v))
+        if self.data:
+            data = "&".join(["%s=%s"%(k,v) for k,v in self.data.items()])
+            s.append('Content-Length: %d\r\n'%(len(data)))
+            s.append(data)
+        else:
+            s.append('\r\n')
+        return '\r\n'.join(s)
+
+    def prepare(self):
+        return Request(
+            method=self.method,
+            url=self.url,
+            headers=self.headers,
+            files=self.files,
+            data=self.data,
+            json=self.json,
+            params=self.query,
+            auth=self.auth,
+            cookies=self.cookies,
+        )
+
     def response(self):
-
-        return req
-
-    def __str__(self):
-        pass
-
+        return self.session.send(self.session.prepare_request(self.prepare()),proxies=self.proxy,verify=False)
+            
+    def _diff_(self):
+        return (self.method,self.netloc,self.path,
+            ''.join(self.query.keys()),
+            ''.join(self.data.keys()),)
     def __eq__(self,req):
-        return str(self) == str(req)
+        return self._diff_() == req._diff_()
 
     def __hash__(self):
-        return hash(str(self))
+        return hash(self._diff_())
 
 class Crawler(object):
     HEADBLOCK = ('#','data:','javascript:','mailto:','about:','magnet:')
-    TYPEBLOCK = ('.SWF','.JPEG','.JPG','.PNG','.GIF','.EXE','.PDF','.ZIP','.RAR','.TAR.GZ','.TAR','.GZ')
-    CRAWL_EXCLUDE_EXTENSIONS = ("3ds", "3g2", "3gp", "7z", "DS_Store", "a", "aac", "adp", "ai", "aif", "aiff", "apk", "ar", "asf", "au", "avi", "bak", "bin", "bk", "bmp", "btif", "bz2", "cab", "caf", "cgm", "cmx", "cpio", "cr2", "dat", "deb", "djvu", "dll", "dmg", "dmp", "dng", "doc", "docx", "dot", "dotx", "dra", "dsk", "dts", "dtshd", "dvb", "dwg", "dxf", "ear", "ecelp4800", "ecelp7470", "ecelp9600", "egg", "eol", "eot", "epub", "exe", "f4v", "fbs", "fh", "fla", "flac", "fli", "flv", "fpx", "fst", "fvt", "g3", "gif", "gz", "h261", "h263", "h264", "ico", "ief", "image", "img", "ipa", "iso", "jar", "jpeg", "jpg", "jpgv", "jpm", "jxr", "ktx", "lvp", "lz", "lzma", "lzo", "m3u", "m4a", "m4v", "mar", "mdi", "mid", "mj2", "mka", "mkv", "mmr", "mng", "mov", "movie", "mp3", "mp4", "mp4a", "mpeg", "mpg", "mpga", "mxu", "nef", "npx", "o", "oga", "ogg", "ogv", "otf", "pbm", "pcx", "pdf", "pea", "pgm", "pic", "png", "pnm", "ppm", "pps", "ppt", "pptx", "ps", "psd", "pya", "pyc", "pyo", "pyv", "qt", "rar", "ras", "raw", "rgb", "rip", "rlc", "rz", "s3m", "s7z", "scm", "scpt", "sgi", "shar", "sil", "smv", "so", "sub", "swf", "tar", "tbz2", "tga", "tgz", "tif", "tiff", "tlz", "ts", "ttf", "uvh", "uvi", "uvm", "uvp", "uvs", "uvu", "viv", "vob", "war", "wav", "wax", "wbmp", "wdp", "weba", "webm", "webp", "whl", "wm", "wma", "wmv", "wmx", "woff", "woff2", "wvx", "xbm", "xif", "xls", "xlsx", "xlt", "xm", "xpi", "xpm", "xwd", "xz", "z", "zip", "zipx")
-    def __init__(
-        self,
-        url,
-        headers = {},
-        threads = 10,
-        timeout = 60,
-        sleep   = 10,
-        proxy   = {},
-        session = None,
-        level   = False,
-        isdomain= True):
-
-        if isdomain:
-            url = '/'.join(url.split('/')[:3])+'/'
-        else:
-            url = url
-        self.basereq = BaseRequest(url,session=session,proxy=proxy,headers=headers)
-        self.website = BaseWebSite(url)
-        self.pag404  = self.website.pag404
-        self.session = self.basereq.session
+    TYPEBLOCK = (
+        ".3ds", ".3g2", ".3gp", ".7z", ".a", ".aac", ".adp", ".ai", ".aif", ".aiff", ".apk", ".ar", ".asf",
+        ".au", ".avi", ".bak", ".bin", ".bk", ".bmp", ".btif", ".bz2", ".cab", ".caf", ".cgm", ".cmx", ".cpio", ".cr2",
+        ".dat", ".deb", ".djvu", ".dll", ".dmg", ".dmp", ".dng", ".doc", ".docx", ".dot", ".dotx", ".dra", ".dsk", ".dts",
+        ".dtshd", ".dvb", ".dwg", ".dxf", ".ear", ".ecelp4800", ".ecelp7470", ".ecelp9600", ".egg", ".eol", ".eot",
+        ".epub", ".exe", ".f4v", ".fbs", ".fh", ".fla", ".flac", ".fli", ".flv", ".fpx", ".fst", ".fvt", ".g3", ".gif",
+        ".gz", ".h261", ".h263", ".h264", ".ico", ".ief", ".image", ".img", ".ipa", ".iso", ".jar", ".jpeg", ".jpg",
+        ".jpgv", ".jpm", ".jxr", ".ktx", ".lvp", ".lz", ".lzma", ".lzo", ".m3u", ".m4a", ".m4v", ".mar", ".mdi", ".mid",
+        ".mj2", ".mka", ".mkv", ".mmr", ".mng", ".mov", ".movie", ".mp3", ".mp4", ".mp4a", ".mpeg", ".mpg", ".mpga",
+        ".mxu", ".nef", ".npx", ".o", ".oga", ".ogg", ".ogv", ".otf", ".pbm", ".pcx", ".pdf", ".pea", ".pgm", ".pic",
+        ".png", ".pnm", ".ppm", ".pps", ".ppt", ".pptx", ".ps", ".psd", ".pya", ".pyc", ".pyo", ".pyv", ".qt", ".rar",
+        ".ras", ".raw", ".rgb", ".rip", ".rlc", ".rz", ".s3m", ".s7z", ".scm", ".scpt", ".sgi", ".shar", ".sil", ".smv",
+        ".so", ".sub", ".swf", ".tar", ".tbz2", ".tga", ".tgz", ".tif", ".tiff", ".tlz", ".ts", ".ttf", ".uvh", ".uvi",
+        ".uvm", ".uvp", ".uvs", ".uvu", ".viv", ".vob", ".war", ".wav", ".wax", ".wbmp", ".wdp", ".weba", ".webm", ".webp",
+        ".whl", ".wm", ".wma", ".wmv", ".wmx", ".woff", ".woff2", ".wvx", ".xbm", ".xif", ".xls", ".xlsx", ".xlt", ".xm",
+        ".xpi", ".xpm", ".xwd", ".xz", ".z", ".zip", ".zipx")
+    def __init__(self,url,headers={},threads=10,timeout=60,sleep=10,proxy={},level=False,cert=None):
+        self.session = Session()
         self.settings            = {}
         self.settings['threads'] = int(threads)
         self.settings['timeout'] = int(timeout)
         self.settings['sleep']   = int(sleep)
         self.settings['proxy']   = proxy
         self.settings['level']   = level
-        self.basereq.headers.update(headers)
-        self.settings['headers'] = self.basereq.headers
+        self.settings['headers']   = headers
+        self.basereq = BaseRequest(url)
+        self.website = BaseWebSite(url,proxy=proxy)
+        self.pag404  = self.website.pag404
         self.block               = []#set()
         self.ISSTART             = True
         self.ReqQueue            = queue.Queue()
         self.ResQueue            = queue.Queue()
         self.SubDomain           = set()  #子域名列表
         self.Directory           = {}     #目录结构
+        self.cert = cert
+        self.url = url
 
     def reqhook(self,req):
         '''用于请求时重写hook
@@ -87,15 +151,17 @@ class Crawler(object):
         return req
 
     def addreq(self,req):
+        if req.path and req.path.lower().endswith(self.TYPEBLOCK): #去除图片等二进制文件
+            return 
         if(req.scheme)and(req.netloc)and(req not in self.block):
             self.block.append(req)
             self.ReqQueue.put(req)
 
     def urljoin(self,url):
         if url:
-            if url.upper().endswith(self.TYPEBLOCK): #去除图片等二进制文件
-                return
-            elif url.upper().startswith(('//','HTTP')):
+            if url.upper().startswith(('//','HTTP')):
+                #http://xx.cn/xx 
+                #//xx.com/xx 
                 if BaseRequest(url).netloc.upper() == self.basereq.netloc.upper(): #同域
                     if url.startswith('//'):
                         url = self.basereq.scheme+':'+url
@@ -103,15 +169,20 @@ class Crawler(object):
                 else:
                     u = BaseRequest(url)
                     self.SubDomain.add((u.scheme,u.netloc.replace('//','')))
-            elif url.startswith('/') or url.startswith(('./','../')):
+            elif url.startswith(('/','./','../')):
+                #./xx/oo 
+                #../xx/oo 
                 return urlparse.urljoin(self.basereq.url,url)
-            elif '://' not in url and not url.startswith(self.HEADBLOCK):
-                return urlparse.urljoin(self.basereq.url,url)
+            else:
+                if not url.startswith(self.HEADBLOCK):
+                    #javascript:void(0) ...
+                    return urlparse.urljoin(self.basereq.url,url)
 
     def request(self,req):
+        req = self.session.prepare_request(req.prepare())
         req = self.reqhook(req)
-        try:
-            res = req.response()
+        try: 
+            res = self.session.send(req,verify=False,proxies=self.settings['proxy'],timeout=self.settings['timeout'])
             self.ResQueue.put((req,res))
             self.parse(res)
             #app 识别
@@ -139,7 +210,7 @@ class Crawler(object):
             urls = urls.union(set(re.findall("""(http[s]?://(?:[-a-zA-Z0-9_]+\.)+[a-zA-Z]+(?::\d+)?(?:/[-a-zA-Z0-9_%./]+)*\??[-a-zA-Z0-9_&%=.]*)""",response)))
             for url in urls:
                 if url:
-                    req = BaseRequest(self.urljoin(url),headers=self.settings['headers'],proxy=self.settings['proxy'],session=self.session)
+                    req = BaseRequest(self.urljoin(url),session=self.session,proxy=self.settings['proxy'])
                     self.addreq(req)
 
             if self.settings['level']:
@@ -156,16 +227,16 @@ class Crawler(object):
                         post['data'].update({name:value})
                     posts.append(post)
                 for post in posts:
-                    req = BaseRequest(self.urljoin(post['action']),method=post['method'],data=post['data'],headers=self.settings['headers'],proxy=self.settings['proxy'],session=self.session)
+                    req = BaseRequest(self.urljoin(post['action']),method=post['method'],data=post['data'],session=self.session,proxy=self.settings['proxy'])
                     self.addreq(req)
 
     def run1(self):
         pool = ThreadPool(self.settings['threads'])
         self.FLAG = self.settings['timeout']
         try:
-            self.addreq(self.basereq)
-            self.parse(self.basereq.response())
-        except:
+            self.request(BaseRequest(self.url,headers=self.settings['headers']))
+        except Exception as e:
+            print(e)
             self.ISSTART = False
             return
         #5分钟后还没有任务加进来就当爬完了
@@ -183,9 +254,13 @@ class Crawler(object):
 if __name__ == '__main__':
     import threading
 
-    x=Crawler('http://59.41.129.37:8080/',timeout=10,threads=1000,level=True)
-    x.settings.update(timeout=10,threads=100,proxy={'http':'http://127.0.0.1:1111','https':'http://127.0.0.1:1111'})
-    threading.Thread(target=x.run1).start()
+    x=Crawler('http://59.41.129.37:8080/')
+    x.settings.update(
+        timeout=10,
+        threads=100,
+        proxy={'http':'http://127.0.0.1:1111','https':'http://127.0.0.1:1111'},
+        level=True)
+    threading.Thread(target=x.run).start()
 
     while x.ISSTART or not x.ResQueue.empty():
         try:

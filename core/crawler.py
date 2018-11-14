@@ -12,6 +12,8 @@ import sys
 import queue
 import urllib.parse as urlparse
 
+
+sys.path.append('./../')
 from lib import requests
 from core.util import CoroutinePool as ThreadPool
 from core.cmsfind import AppFind

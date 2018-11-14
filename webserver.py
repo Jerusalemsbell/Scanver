@@ -67,11 +67,11 @@ class MemorySession(object):
     def __getitem__(self, key):
         info = self._session_data.get(self.session,{})
         if info:return info.get(key, None)
-    def __str__(self):
-        return str(self.session)
+    def __repr__(self):
+        return self.session
     @classmethod
     def generate(self):
-        return str(generateid())
+        return str(uuid.uuid4().hex)
     def heartbeat(self):
         session = self.session
         self.session = self.generate()
@@ -1647,7 +1647,6 @@ class ApiAction(object):
         MU = models.User
         MD = models.Department
 
-
         sw = M.updatedate != '0000-00-00 00:00:00'
         query = M.select()
         if port:
@@ -1665,11 +1664,14 @@ class ApiAction(object):
 
         query = query.join(MH).where(sw)
 
-        if ment:
-            ment = MD.get(MD.bid == ment)
-            sw = MU.department == ment
+        if ment or user:
+            if ment:
+                ment = MD.get(MD.bid == ment)
+                sw = MU.department == ment
             if user:
-                sw |= MU.uid == user
+                sw = MU.uid == user
+            if ment and user:
+                sw = (MU.department == ment)|(MU.uid == user)
             query = query.join(MU).where(sw)
 
         query = query.order_by(-M.updatedate)

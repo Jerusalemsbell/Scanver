@@ -146,6 +146,3 @@ class TaskManage(object):
             p = multiprocessing.Process(target=self.addtask,args=(Q,False,))
             p.start()
 
-
-if __name__ == '__main__':
-    pass

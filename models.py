@@ -4,6 +4,7 @@
 #email      ydhcui@/QQ664284092
 
 from lib import sql as orm
+from peewee import __exception_wrapper__
 from settings import DATABASE
 import time
 import datetime
@@ -18,7 +19,7 @@ class MySQLDatabase(orm.MySQLDatabase):
         except orm.OperationalError:
             if not self.is_closed():
                 self.close()
-            with orm.__exception_wrapper__:
+            with __exception_wrapper__:
                 cursor = self.cursor()
                 cursor.execute(sql, params or ())
                 if commit and not self.in_transaction():
