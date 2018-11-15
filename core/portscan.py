@@ -3,7 +3,6 @@
 #codeby     道长且阻
 #email      @ydhcui/QQ664284092
 
-
 import re
 import socket
 import os
@@ -401,8 +400,8 @@ class PortScan(object):
                         break
                 except Exception as e:
                     print(e,s[-1],host,port,data)
-            if protocol == 'unknow' and str(port) in SERV.keys():
-                protocol = SERV[str(port)]
+        if protocol == 'unknow' and str(port) in SERV.keys():
+            protocol = SERV[str(port)]
         if isopen:
             if host not in self.result:
                 self.result[host] = {}
@@ -423,8 +422,7 @@ class PortScan(object):
                 data))
 
 if __name__=='__main__':
-    s=PortScan('59.41.129.37',neping=0)
-    for h,v in s.scan():
-        print(h)
-        for p in v['ports']:
-            print('    ',p[1],p[2],p[4])
+    ret = PortScan('113.109.22.5').scan()
+    for host,value in ret.items():
+        for host,port,protocol,state,service,product,extrainfo,version,data in value['ports']:
+            pass

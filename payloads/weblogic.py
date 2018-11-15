@@ -247,11 +247,12 @@ class WeblogicWeakPass(BaseWeblogic):
             "Content-Type":"application/x-www-form-urlencoded"
         }
         vulnurl = web.url + "/console/j_security_check"
-        req = requests.post(vulnurl, data=post_data, headers=headers, timeout=timeout, verify=False, allow_redirects=False)
-        if req.status_code == 302 and r"console" in req.text and r"LoginForm.jsp" not in req.text:
-            self.bugaddr = "%s:%s@%s"%(user,pwd,vulnurl)
-            self.bugreq = "username:%s , password:%s"%(user,pwd)
-            return True
+        try:
+            req = requests.post(vulnurl, data=post_data, headers=headers, timeout=timeout, verify=False, allow_redirects=False)
+            if req.status_code == 302 and r"console" in req.text and r"LoginForm.jsp" not in req.text:
+                self.bugaddr = "%s:%s@%s"%(user,pwd,vulnurl)
+                self.bugreq = "username:%s , password:%s"%(user,pwd)
+                return True
         except Exception as e:
             print(e)
 
