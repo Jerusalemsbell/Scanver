@@ -16,92 +16,10 @@ from requests import Session,Request
 from core.util import CoroutinePool as ThreadPool
 from core.cmsfind import AppFind
 from core.log import logging
-from core.base import BaseWebSite,ConnectionError
+from core.base import BaseRequest,BaseWebSite,ConnectionError
 import settings
 
 APP = AppFind(settings.DATAPATH + '/appdata.json')
-
-class BaseRequest(object):
-    '''定义一个http请求的基类'''
-    def __init__(self,url,data={},method='GET',headers={},
-        files={},cookies={},auth=None,hooks=None, json=None,
-        session=None,proxy={}):
-        if url and url.startswith('//'):
-            url = 'http:'+url
-        if url and not url.upper().startswith('HTTP'):
-            url = 'http://%s'%url
-        self.url    = url
-        self.data   = data
-        self.method = method.strip()
-        self.version= 'HTTP/1.1'
-        parser      = urlparse.urlsplit(self.url)
-        self.scheme = parser.scheme #https
-        self.netloc = parser.netloc #www.baidu.com
-        self.path   = parser.path   #/query.php
-        query       = parser.query  #a=1&b=2
-        self.headers= {
-            "User-Agent":"Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.87 Safari/537.36",
-            "Accept-Encoding":"gzip, deflate, sdch",
-            "Accept-Language":"zh-CN,zh;q=0.8",
-            "Connection":"keep-alive",
-            "Referer":'%s://%s/'%(self.scheme,self.netloc),}
-        self.headers.update(headers)
-        self.query  = {}
-        if query:
-           self.query = dict([q.split('=')[:2] for q in query.split('&') if '=' in q])
-        if data and method == 'GET':
-            self.method = 'POST'
-        self.files  = [] if files is None else files 
-        self.auth   = auth 
-        self.json   = json
-        self.cookies= cookies
-        self.session = session or Session() 
-        self.proxy   = proxy
-
-    def __repr__(self):
-        s=[]
-        s.append("%s %s %s"%(
-            self.method.upper(),
-            '%s?%s'%(self.path,
-                '&'.join(['%s=%s'%(k,v) for k,v in self.query.items()])) \
-                if self.query else self.path,
-            self.version))
-        s.append('Host: %s'%(self.netloc))
-        for k,v in self.headers.items():
-            s.append("%s: %s"%(k,v))
-        if self.data:
-            data = "&".join(["%s=%s"%(k,v) for k,v in self.data.items()])
-            s.append('Content-Length: %d\r\n'%(len(data)))
-            s.append(data)
-        else:
-            s.append('\r\n')
-        return '\r\n'.join(s)
-
-    def prepare(self):
-        return Request(
-            method=self.method,
-            url=self.url,
-            headers=self.headers,
-            files=self.files,
-            data=self.data,
-            json=self.json,
-            params=self.query,
-            auth=self.auth,
-            cookies=self.cookies,
-        )
-
-    def response(self):
-        return self.session.send(self.session.prepare_request(self.prepare()),proxies=self.proxy,verify=False)
-            
-    def _diff_(self):
-        return (self.method,self.netloc,self.path,
-            ''.join(self.query.keys()),
-            ''.join(self.data.keys()),)
-    def __eq__(self,req):
-        return self._diff_() == req._diff_()
-
-    def __hash__(self):
-        return hash(self._diff_())
 
 class Crawler(object):
     HEADBLOCK = ('#','data:','javascript:','mailto:','about:','magnet:')
@@ -121,6 +39,7 @@ class Crawler(object):
         ".uvm", ".uvp", ".uvs", ".uvu", ".viv", ".vob", ".war", ".wav", ".wax", ".wbmp", ".wdp", ".weba", ".webm", ".webp",
         ".whl", ".wm", ".wma", ".wmv", ".wmx", ".woff", ".woff2", ".wvx", ".xbm", ".xif", ".xls", ".xlsx", ".xlt", ".xm",
         ".xpi", ".xpm", ".xwd", ".xz", ".z", ".zip", ".zipx")
+    ERR_FLAG = re.compile(r'Error|Error Page|Unauthorized|Welcome to tengine!|Welcome to OpenResty!|invalid service url|Not Found|不存在|未找到|410 Gone|looks like something went wrong|Bad Request|Welcome to nginx!', re.I)
     def __init__(self,url,headers={},threads=10,timeout=60,sleep=10,proxy={},level=False,cert=None):
         self.session = Session()
         self.settings            = {}
@@ -129,9 +48,9 @@ class Crawler(object):
         self.settings['sleep']   = int(sleep)
         self.settings['proxy']   = proxy
         self.settings['level']   = level
-        self.settings['headers']   = headers
+        self.settings['headers'] = headers
         self.basereq = BaseRequest(url)
-        self.website = BaseWebSite(url,proxy=proxy)
+        self.website = BaseWebSite(url,proxy=self.settings['proxy'],session=self.session)
         self.pag404  = self.website.pag404
         self.block               = []#set()
         self.ISSTART             = True
@@ -182,14 +101,17 @@ class Crawler(object):
         req = self.session.prepare_request(req.prepare())
         req = self.reqhook(req)
         try: 
-            res = self.session.send(req,verify=False,proxies=self.settings['proxy'],timeout=self.settings['timeout'])
+            res = self.session.send(req,
+                verify=False,
+                proxies=self.settings['proxy'],
+                timeout=self.settings['timeout'])
             self.ResQueue.put((req,res))
             self.parse(res)
             #app 识别
             for app in APP.find(res):
                 self.website.content = app
-        except ConnectionError:
-            logging.warn('ConnectionError')
+        except ConnectionError as e:
+            logging.warn(str(e))
             time.sleep(self.settings['sleep'])
         except Exception as e:
             logging.warn(str(e))
@@ -260,7 +182,7 @@ if __name__ == '__main__':
         threads=100,
         proxy={'http':'http://127.0.0.1:1111','https':'http://127.0.0.1:1111'},
         level=True)
-    threading.Thread(target=x.run).start()
+    threading.Thread(target=x.run1).start()
 
     while x.ISSTART or not x.ResQueue.empty():
         try:

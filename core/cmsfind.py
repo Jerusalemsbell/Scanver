@@ -19,7 +19,7 @@ class CmsFind(object):
 
     def load(self,url,threads=100):
         self.url = url
-        pool = CoroutinePool(self.threads)
+        pool = CoroutinePool(threads)
         for cms in self.cmsdict:
             pool.spawn(self.getver,cms['url'],cms['re'],cms['name'],cms['md5'])
         pool.join()

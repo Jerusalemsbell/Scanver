@@ -128,7 +128,7 @@ class BaseScan(object):
         q.save()
 
     def writewebsite(self,w):
-        logging.info("Writewebsite %s %s %s %s "%(w.status_code,w.host,w.port,w.domain))
+        #logging.info("Writewebsite %s %s %s %s "%(w.status_code,w.host,w.port,w.domain))
         if w.status_code != 0:
             r,cd = models.HttpResult.get_or_create(host_ip=w.host,port=w.port)
             r.state     = w.status_code
