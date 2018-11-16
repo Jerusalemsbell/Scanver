@@ -34,7 +34,7 @@ class Jqueryvd(BaseHttpPlugin):
 
     def filter(self,crawle,req,res):
         return 'jquery' in req.url \
-            or 'jquery.org/license' in res.text[:100]
+           and 'jquery.org/license' in res.text[:100]
 
     def verify(self,crawle,req,res):
         '''jquery版本小于1.11则报'''
@@ -73,7 +73,7 @@ class PathInfoView(BaseHttpPlugin):
 
     def filter(self,crawle,req,res):
         ct = res.headers.get('content-type','')
-        return "text" in ct and not req.url.endswith('js')
+        return "text" in ct and not req.path.endswith('js')
 
     def verify(self,crawle,req,res):
         for p in self.PAYLOADS:
