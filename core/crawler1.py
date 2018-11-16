@@ -106,6 +106,7 @@ class Crawler(object):
             #    proxies=self.settings['proxy'],
             #    timeout=self.settings['timeout'])
             res = req.response()
+            logging.info("%s %s"%(res.status_code,req.url))
             self.ResQueue.put((req,res))
             self.parse(res)
             #app 识别
@@ -164,7 +165,7 @@ class Crawler(object):
             return
         #5分钟后还没有任务加进来就当爬完了
         while self.ISSTART and self.FLAG > 0:
-            logging.load('Reload ... Wait for %s'%self.FLAG)
+            #logging.load('Reload ... Wait for %s'%self.FLAG)
             try:
                 req = self.ReqQueue.get(block=False)
                 pool.spawn(self.request,req)
