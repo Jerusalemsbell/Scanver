@@ -27,7 +27,7 @@ class SQLInjection(BaseHttpPlugin):
     bugrank = '高危'
 
     def filter(self,crawle,req,res):
-        return req.query or req.data
+        return req.params or req.data
 
     def verify(self,crawle,req,res):
         return self.sqlinjection_headers(req,res)\
@@ -122,18 +122,18 @@ class SQLInjection(BaseHttpPlugin):
     def sqlinjection_int(self,req,res):
         '''数字型注入'''
         req = copy.deepcopy(req)
-        for k,v in req.query.items():
+        for k,v in req.params.items():
             if not v.isdigit():
                 continue
-            req.query[k] = v+'+1'
+            req.params[k] = v+'+1'
             res1 = req.response()
-            req.query[k] = v+'+1-1'
+            req.params[k] = v+'+1-1'
             res2 = req.response()
             if res.text == res2.text and res1.text != res2.text:
                 self.bugaddr = req.url
                 self.bugreq = str(req)
                 return True
-            req.query[k] = v
+            req.params[k] = v
 
         for k,v in req.data.items():
             if not v.isdigit():
@@ -158,18 +158,18 @@ class SQLInjection(BaseHttpPlugin):
             #("\tand\t0;#",      "\tand\t1;#"),
             #("\nand/**/0;#",    "\nand/**/1;#"),
         ]
-        for k,v in req.query.items():
+        for k,v in req.params.items():
             for q in QUOTES:
                 for p1,p2 in PAYLOADS:
-                    req.query[k] = v+q+p1.replace("'",q)
+                    req.params[k] = v+q+p1.replace("'",q)
                     res1 = req.response()
-                    req.query[k] = v+q+p2.replace("'",q)
+                    req.params[k] = v+q+p2.replace("'",q)
                     res2 = req.response()
                     if res.text == res2.text and res1.text != res2.text:
                         self.bugaddr = req.url
                         self.bugreq = str(req)
                         return True
-            req.query[k] = v
+            req.params[k] = v
 
         for k,v in req.data.items():
             for q in QUOTES:
@@ -187,32 +187,32 @@ class SQLInjection(BaseHttpPlugin):
     def sqlinjection_error(self,req,res):
         '''报错注入'''
         req = copy.deepcopy(req)
-        for k,v in req.query.items():
+        for k,v in req.params.items():
             if not v:
                 v = 'sqlinjectiontest'
-            req.query[k] = v
-        for k,v in req.query.items():
+            req.params[k] = v
+        for k,v in req.params.items():
             if not v:
                 v = 'sqlinjectiontest'
-            req.query[k] = v+"'"
+            req.params[k] = v+"'"
             res1 = req.response()
-            req.query[k] = v+'"'
+            req.params[k] = v+'"'
             res2 = req.response()
             for sql_regex, dbms_type in self.sql_errors:
                 match0 = sql_regex.search(res.text)
                 match1 = sql_regex.search(res1.text)
                 match2 = sql_regex.search(res2.text)
-                if((not match0)and(match1))or((req.query[k] in res1.text)and(req.query[k] not in res.text)):
+                if((not match0)and(match1))or((req.params[k] in res1.text)and(req.params[k] not in res.text)):
                     self.bugaddr = req.url
                     self.bugreq = str(req)
                     self.bugres = match1.group(0)
                     return True
-                elif(not match0)and(match2)or((req.query[k] in res2.text)and(req.query[k] not in res.text)):
+                elif(not match0)and(match2)or((req.params[k] in res2.text)and(req.params[k] not in res.text)):
                     self.bugaddr = req.url
                     self.bugreq = str(req)
                     self.bugres = match2.group(0)
                     return True
-            req.query[k] = v
+            req.params[k] = v
         for k,v in req.data.items():
             if not v:
                 v = 'sqlinjectiontest'
@@ -228,12 +228,12 @@ class SQLInjection(BaseHttpPlugin):
                 match0 = sql_regex.search(res.text)
                 match1 = sql_regex.search(res1.text)
                 match2 = sql_regex.search(res2.text)
-                if((not match0)and(match1))or((req.query[k] in res1.text)and(req.query[k] not in res.text)):
+                if((not match0)and(match1))or((req.params[k] in res1.text)and(req.params[k] not in res.text)):
                     self.bugaddr = req.url
                     self.bugreq = str(req)
                     self.bugres = match1.group(0)
                     return True
-                elif(not match0)and(match2)or((req.query[k] in res2.text)and(req.query[k] not in res.text)):
+                elif(not match0)and(match2)or((req.params[k] in res2.text)and(req.params[k] not in res.text)):
                     self.bugaddr = req.url
                     self.bugreq = str(req2)
                     self.bugres = match2.group(0)
@@ -268,7 +268,7 @@ class XssScripting(BaseHttpPlugin):
     bugrank = '高危'
 
     def filter(self,crawle,req,res):
-        return req.query or req.data
+        return req.params or req.data
 
     def verify(self,crawle,req,res):
         '''
@@ -276,8 +276,8 @@ class XssScripting(BaseHttpPlugin):
         '''
         req = copy.deepcopy(req)
         for p,r in self.PAYLOADS:
-            for k,v in req.query.items():
-                req.query[k] = p
+            for k,v in req.params.items():
+                req.params[k] = p
                 res = req.response()
                 r = r.search(res.text)
                 if r:
@@ -286,7 +286,7 @@ class XssScripting(BaseHttpPlugin):
                     self.bugreq = str(req)
                     self.bugres = res.text[x-5:y+5]
                     return True
-                req.query[k] = v
+                req.params[k] = v
 
             for k,v in req.data.items():
                 req.data[k] = p
@@ -311,18 +311,18 @@ class RemoteFileInclude(BaseHttpPlugin):
 
     def verify(self,crawle,req,res):
         req = copy.deepcopy(req)
-        for k,v in req.query.items():
-            req.query[k] = p
+        for k,v in req.params.items():
+            req.params[k] = p
             if req in self.reqblock:
                 continue
             self.reqblock.append(req)
-            req.query[k] = self.PAYLOADS[0]
+            req.params[k] = self.PAYLOADS[0]
             res1 = req.response()
             if(self.PAYLOADS[1] in res1.text)and(self.PAYLOADS[1] not in res1.text):
                 self.bugaddr = req.url
                 self.bugreq = str(req)
                 return True
-            req.query[k] = v
+            req.params[k] = v
 
         for k,v in req.data.items():
             req.data[k] = p
@@ -366,13 +366,13 @@ class Sstif(BaseHttpPlugin):
         self.payloads_list = payloads_list
 
     def filter(self,crawle,req,res):
-        return (req.query or req.data)and(not req.path.endswith(('.js','.css')))
+        return (req.params or req.data)and(not req.path.endswith(('.js','.css')))
 
     def verify(self,crawle,req,res):
         req = copy.deepcopy(req)
         for p in self.payloads_list:
-            for k,v in req.query.items():
-                req.query[k] = p
+            for k,v in req.params.items():
+                req.params[k] = p
                 res1 = req.response()
                 for r in self.checkkey_list:
                     if r not in res.text and r in res1.text:
@@ -380,7 +380,7 @@ class Sstif(BaseHttpPlugin):
                         self.bugreq = str(req)
                         self.bugres = r
                         return True
-                req.query[k] = v
+                req.params[k] = v
 
             for k,v in req.data.items():
                 req.data[k] = p

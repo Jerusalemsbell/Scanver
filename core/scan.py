@@ -6,6 +6,8 @@
 import socket
 import re
 import os
+import sys
+import traceback
 import time
 import json
 import urllib
@@ -32,6 +34,7 @@ requests.packages.urllib3.disable_warnings()
 
 class BaseScan(object):
     def __init__(self,taskid):
+        PluginsManage.load('./payloads')
         M = models.ScanTask
         self.Q = M.get(M.task_id==taskid)
         self.T = app.AsyncResult(taskid)
@@ -70,8 +73,9 @@ class BaseScan(object):
             self.auths = self.get_auth()
             self.scan()
         except Exception as e:
-            print(e)
-            self.Q.task_code  = str(e)
+            type,value,tb = sys.exc_info()
+            e = '\n'.join(set(traceback.format_exception(type,value,tb)))
+            logging.error(str(e))
         finally:
             self.Q.finishdate = datetime.datetime.now()
             self.Q.task_pid  = '0'
@@ -100,12 +104,12 @@ class BaseScan(object):
 
     def payloadverify(self,plug,host):
         '''插件验证'''
-        logging.info('check %s-%s-%s'%(plug.__class__,host.host,host.port))               
+        #logging.info('check %s-%s-%s'%(plug.__class__,host.host,host.port))               
         filter = int(self.args.get('filter',1)) #是否需要过滤、
         try:
             socket.setdefaulttimeout(360)
             if not filter or plug.filter(host):
-                logging.info('filter %s-%s-%s-%s-%s'%(plug.__class__,host.host,host.port))
+                #logging.info('filter %s-%s-%s'%(plug.__class__,host.host,host.port))
                 for user,pwd in self.auths if plug.BRUTE else [(None,'123456')]:
                     if user:
                         verify = plug.verify(host,user=user,pwd=pwd)
@@ -115,6 +119,8 @@ class BaseScan(object):
                         logging.warn('verify %s-%s-%s-%s-%s'%(plug.__class__,host.host,host.port,user,pwd))
                         return self.callback_bug(plug)
         except Exception as e:
+            type,value,tb = sys.exc_info()
+            e = '\n'.join(set(traceback.format_exception(type,value,tb)))
             logging.error(str(e))
 
     def selecthttp(self,q):
@@ -130,7 +136,7 @@ class BaseScan(object):
     def writewebsite(self,w):
         #logging.info("Writewebsite %s %s %s %s "%(w.status_code,w.host,w.port,w.domain))
         if w.status_code != 0:
-            r,cd = models.HttpResult.get_or_create(host_ip=w.host,port=w.port)
+            r,cd = models.HttpResult.get_or_create(host=w.host,port=w.port)
             r.state     = w.status_code
             r.banner    = w.server
             r.domain    = w.domain
@@ -179,8 +185,7 @@ class BaseScan(object):
             RH.os_type      = value['ostype']
             RH.save()
             for host,port,protocol,state,service,product,extrainfo,version,data in value['ports']:
-                RP,created      = models.PortResult.get_or_create(hostid=RH,port=port)
-                RP.host         = RH.host_ip
+                RP,created      = models.PortResult.get_or_create(hostid=RH,host=RH.host_ip,port=port)
                 RP.port_type    = protocol
                 RP.port_state   = state
                 RP.service_name = service
@@ -218,6 +223,7 @@ class HttpScan(BaseScan):
         while self.crawle.ISSTART or not self.crawle.ResQueue.empty():
             try:
                 req,res = self.crawle.ResQueue.get(block=False)
+                #print(res.status_code,req.url)
                 req = copy.deepcopy(req)
                 res = copy.deepcopy(res)
                 for payload in BaseHttpPlugin.payloads():
@@ -227,13 +233,14 @@ class HttpScan(BaseScan):
             except queue.Empty:
                 pass
             except Exception as e:
+                type,value,tb = sys.exc_info()
+                e = '\n'.join(set(traceback.format_exception(type,value,tb)))
                 logging.error(str(e))
 
     def scan(self):
         level = int(self.args.get('level',1)) #post 扫描
         headers = json.loads(self.args.get('headers',"{}"))
         proxy= json.loads(self.args.get('proxy',"{}"))
-        #{'http':'http://127.0.0.1:1111','https':'http://127.0.0.1:1111'}
 
         if not self.target.startswith(('http','HTTP')):
             self.target = 'http://' + self.target
@@ -243,10 +250,9 @@ class HttpScan(BaseScan):
         for target in gethosts(self.target):
             self.portscan(target)
         self.crawle = Crawler(self.target)
-        #self.crawle.settings.update(level=level)
-        #self.crawle.settings.update()
         self.crawle.settings.update(self.args)
-
+        #self.crawle.settings.update(proxy={'http':'http://127.0.0.1:1111','https':'http://127.0.0.1:1111'})
+        
         th=[]
         th.append(threading.Thread(target=self.crawle.run1))
         th.append(threading.Thread(target=self.webscan))

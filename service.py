@@ -22,7 +22,7 @@ app = Celery(NODEID)
 app.conf.update(
     CELERY_IMPORTS          = ('tasks'),
     BROKER_URL              = 'redis://:%s@%s:%s/0'%(settings.REDIS['auth'],settings.REDIS['host'],settings.REDIS['port']),
-    CELERY_RESULT_BACKEND   = 'redis://:%s@%s:%s/0'%(settings.REDIS['auth'],settings.REDIS['host'],settings.REDIS['port']),
+    #CELERY_RESULT_BACKEND   = 'redis://:%s@%s:%s/0'%(settings.REDIS['auth'],settings.REDIS['host'],settings.REDIS['port']),
 )
 
 class TaskManage(object):

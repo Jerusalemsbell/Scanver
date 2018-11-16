@@ -12,14 +12,14 @@ import sys
 import queue
 import threading
 import urllib.parse as urlparse
-from requests import Session,Request
+from requests import Session
 from core.util import CoroutinePool as ThreadPool
 from core.cmsfind import AppFind
 from core.log import logging
 from core.base import BaseRequest,BaseWebSite,ConnectionError
 import settings
 
-APP = AppFind(settings.DATAPATH + '/appdata.json')
+#APP = AppFind(settings.DATAPATH + '/appdata.json')
 
 class Crawler(object):
     HEADBLOCK = ('#','data:','javascript:','mailto:','about:','magnet:')
@@ -93,23 +93,24 @@ class Crawler(object):
                 #../xx/oo 
                 return urlparse.urljoin(self.basereq.url,url)
             else:
-                if not url.startswith(self.HEADBLOCK):
+                if not url.lower().startswith(self.HEADBLOCK):
                     #javascript:void(0) ...
                     return urlparse.urljoin(self.basereq.url,url)
 
     def request(self,req):
-        req = self.session.prepare_request(req.prepare())
+        #req = self.session.prepare_request(req.prepare())
         req = self.reqhook(req)
         try: 
-            res = self.session.send(req,
-                verify=False,
-                proxies=self.settings['proxy'],
-                timeout=self.settings['timeout'])
+            #res = self.session.send(req,
+            #    verify=False,
+            #    proxies=self.settings['proxy'],
+            #    timeout=self.settings['timeout'])
+            res = req.response()
             self.ResQueue.put((req,res))
             self.parse(res)
             #app 识别
-            for app in APP.find(res):
-                self.website.content = app
+            #for app in APP.find(res):
+            #    self.website.content = app
         except ConnectionError as e:
             logging.warn(str(e))
             time.sleep(self.settings['sleep'])

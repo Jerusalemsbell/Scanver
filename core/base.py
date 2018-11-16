@@ -3,13 +3,13 @@
 #codeby     道长且阻
 #email      @ydhcui/QQ664284092
 import requests
-from requests import Session  
+from requests import Session,Request  
 import re
 import socket
 import urllib.parse as urlparse
 import settings
 from core.cmsfind import CmsFind
-CMS = CmsFind(settings.DATAPATH + '/cmsdata.json')
+#CMS = CmsFind(settings.DATAPATH + '/cmsdata.json')
 
 ####################################
 class BaseWebSite(object):
@@ -44,7 +44,7 @@ class BaseWebSite(object):
         self.load()
         if load:
             self.pag404     = self.getpag404()
-            self.cmsver = '|'.join(list(CMS.load(self.url)))
+            #self.cmsver = '|'.join(list(CMS.load(self.url)))
             if 'JSP' in self.xpoweredby:
                 server = self.javaserver(self.scheme,self.netloc)
                 self.server = server + '|' + self.server if server else res.headers.get('Server')
@@ -150,8 +150,8 @@ class BaseRequest(object):
         parser      = urlparse.urlsplit(self.url)
         self.scheme = parser.scheme #https
         self.netloc = parser.netloc #www.baidu.com
-        self.path   = parser.path   #/query.php
-        query       = parser.query  #a=1&b=2
+        self.path   = parser.path   #/params.php
+        params      = parser.query  #a=1&b=2
         self.headers= {
             "User-Agent":"Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.87 Safari/537.36",
             "Accept-Encoding":"gzip, deflate, sdch",
@@ -159,9 +159,9 @@ class BaseRequest(object):
             "Connection":"keep-alive",
             "Referer":'%s://%s/'%(self.scheme,self.netloc),}
         self.headers.update(headers)
-        self.query  = {}
-        if query:
-           self.query = dict([q.split('=')[:2] for q in query.split('&') if '=' in q])
+        self.params  = {}
+        if params:
+           self.params = dict([q.split('=')[:2] for q in params.split('&') if '=' in q])
         if data and method == 'GET':
             self.method = 'POST'
         self.auth   = auth 
@@ -176,8 +176,8 @@ class BaseRequest(object):
         s.append("%s %s %s"%(
             self.method.upper(),
             '%s?%s'%(self.path,
-                '&'.join(['%s=%s'%(k,v) for k,v in self.query.items()])) \
-                if self.query else self.path,
+                '&'.join(['%s=%s'%(k,v) for k,v in self.params.items()])) \
+                if self.params else self.path,
             self.version))
         s.append('Host: %s'%(self.netloc))
         for k,v in self.headers.items():
@@ -198,7 +198,7 @@ class BaseRequest(object):
             files=self.files,
             data=self.data,
             json=self.json,
-            params=self.query,
+            params=self.params,
             auth=self.auth,
             cookies=self.cookies,
         )
@@ -210,7 +210,7 @@ class BaseRequest(object):
             
     def _diff_(self):
         return (self.method,self.netloc,self.path,
-            ''.join(self.query.keys()),
+            ''.join(self.params.keys()),
             ''.join(self.data.keys()),)
     def __eq__(self,req):
         return self._diff_() == req._diff_()

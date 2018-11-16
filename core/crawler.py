@@ -13,7 +13,6 @@ import queue
 import urllib.parse as urlparse
 
 
-sys.path.append('./../')
 from lib import requests
 from core.util import CoroutinePool as ThreadPool
 from core.cmsfind import AppFind
@@ -21,7 +20,7 @@ from core.log import logging
 from core.base import BaseWebSite,ConnectionError
 import settings
 
-APP = AppFind(settings.DATAPATH + '/appdata.json')
+#APP = AppFind(settings.DATAPATH + '/appdata.json')
 
 class BaseRequest(object):
     '''定义一个http请求的基类'''
@@ -179,8 +178,8 @@ class Crawler(object):
             self.ResQueue.put((req,res))
             self.parse(res)
             #app 识别
-            for app in APP.find(res):
-                self.website.content = app
+            #for app in APP.find(res):
+            #    self.website.content = app
         except ConnectionError:
             logging.warn('ConnectionError')
             time.sleep(self.settings['sleep'])
@@ -234,7 +233,7 @@ class Crawler(object):
             return
         #5分钟后还没有任务加进来就当爬完了
         while self.ISSTART and self.FLAG > 0:
-            logging.load('Reload ... Wait for %s'%self.FLAG)
+            #logging.load('Reload ... Wait for %s'%self.FLAG)
             try:
                 req = self.ReqQueue.get(block=False)
                 pool.spawn(self.request,req)

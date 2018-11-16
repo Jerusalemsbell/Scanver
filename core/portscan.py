@@ -326,7 +326,7 @@ class Nscan(object):
         sendThr = SendPingThr(iplist, packet, sock, self.timeout)
         sendThr.start()
         while True:
-            logging.load('recv %s'%time.time())
+            #logging.load('recv %s'%time.time())
             try:
                 recvFroms.add(sock.recvfrom(255)[1][0])
             except Exception as e:
