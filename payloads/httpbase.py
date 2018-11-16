@@ -165,7 +165,7 @@ class SQLInjection(BaseHttpPlugin):
                     res1 = req.response()
                     req.params[k] = v+q+p2.replace("'",q)
                     res2 = req.response()
-                    if res.text == res2.text and res1.text != res2.text:
+                    if res.text != res.text and res.text == res2.text and res1.text == res2.text:
                         self.bugaddr = req.url
                         self.bugreq = str(req)
                         return True
@@ -178,7 +178,7 @@ class SQLInjection(BaseHttpPlugin):
                     res1 = req.response()
                     req.data[k] = v+q+p2
                     res2 = req.response()
-                    if res.text == res2.text and res1.text != res2.text:
+                    if res.text != res.text and res.text == res2.text and res1.text == res2.text:
                         self.bugaddr = req.url
                         self.bugreq = str(req)
                         return True
@@ -261,7 +261,7 @@ class XssScripting(BaseHttpPlugin):
     PAYLOADS = [
         ('''<onxssTEST>''', re.compile(r'''[^'"]<onxssTEST>[^'"]''')),
         ('''"onxssTEST"''', re.compile(r'''[^']"onxssTEST""''')),
-        ("""'onxssTEST'""", re.compile(r"""[^"]'onxssTEST''""")),
+        ("""'onxssTEST'""", re.compile(r"""[^"]'onxssTEST''"""))
     ]
 
     bugname = 'XSS跨站脚本'
@@ -274,14 +274,13 @@ class XssScripting(BaseHttpPlugin):
         '''
         存储型XSS貌似没办法扫描到
         '''
-        req = copy.deepcopy(req)
         for p,r in self.PAYLOADS:
             for k,v in req.params.items():
                 req.params[k] = p
                 res = req.response()
-                r = r.search(res.text)
-                if r:
-                    x,y = r.regs[0]
+                r1 = r.search(res.text)
+                if r1:
+                    x,y = r1.regs[0]
                     self.bugaddr = req.url
                     self.bugreq = str(req)
                     self.bugres = res.text[x-5:y+5]
@@ -291,9 +290,9 @@ class XssScripting(BaseHttpPlugin):
             for k,v in req.data.items():
                 req.data[k] = p
                 res = req.response()
-                r = r.search(res.text)
-                if r:
-                    x,y = r.regs[0]
+                r2 = r.search(res.text)
+                if r2:
+                    x,y = r2.regs[0]
                     self.bugaddr = req.url
                     self.bugreq = str(req)
                     self.bugres = res.text[x-5:y+5]
