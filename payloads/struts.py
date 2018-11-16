@@ -178,7 +178,7 @@ class Struts2053(BaseHttpPlugin):
         req = copy.deepcopy(req)
         payload = "%{987654321-1234567}"
         try:
-            req.url = req.path + "?redirectUri=%s"%payload
+            req.url = req.url.split('?')[0] + "?redirectUri=%s"%payload
             res1 = req.response()
             if r"986419754" in res1.text and r"986419754" not in res.text:
                 self.bugaddr = req.url
