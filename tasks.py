@@ -45,7 +45,11 @@ def domainscan(Q):
     '''域名扫描'''
     s = scan.DomainScan(Q)
     s.start()
-
+#@TaskManage.task(tasktype='web')
+def gettitle(Q):
+    '''网页标题'''
+    scan.BaseScan.gethttptitle()
+    
 if __name__ == '__main__':
     import sys
     if len(sys.argv) >= 2:

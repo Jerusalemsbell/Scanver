@@ -20,7 +20,8 @@ from core.base import BaseRequest,BaseWebSite,ConnectionError
 import settings
 
 #APP = AppFind(settings.DATAPATH + '/appdata.json')
-
+class Page(object):
+    def __init__
 class Crawler(object):
     HEADBLOCK = ('#','data:','javascript:','mailto:','about:','magnet:')
     TYPEBLOCK = (
@@ -39,9 +40,12 @@ class Crawler(object):
         ".uvm", ".uvp", ".uvs", ".uvu", ".viv", ".vob", ".war", ".wav", ".wax", ".wbmp", ".wdp", ".weba", ".webm", ".webp",
         ".whl", ".wm", ".wma", ".wmv", ".wmx", ".woff", ".woff2", ".wvx", ".xbm", ".xif", ".xls", ".xlsx", ".xlt", ".xm",
         ".xpi", ".xpm", ".xwd", ".xz", ".z", ".zip", ".zipx")
-    ERR_FLAG = re.compile(r'Error|Error Page|Unauthorized|Welcome to tengine!|Welcome to OpenResty!|invalid service url|Not Found|不存在|未找到|410 Gone|looks like something went wrong|Bad Request|Welcome to nginx!', re.I)
+    ERRFLAG403 = re.compile(r'Error|Error Page|Unauthorized|Welcome to tengine!|Welcome to OpenResty!|invalid service url|Not Found|不存在|未找到|410 Gone|looks like something went wrong|Bad Request|Welcome to nginx!', re.I)
+    ERRFLAG404 = re.compile
+    ERRFLAG500 = re.compile
+
+
     def __init__(self,url,headers={},threads=10,timeout=60,sleep=10,proxy={},level=False,cert=None):
-        self.session = Session()
         self.settings            = {}
         self.settings['threads'] = int(threads)
         self.settings['timeout'] = int(timeout)
@@ -49,17 +53,21 @@ class Crawler(object):
         self.settings['proxy']   = proxy
         self.settings['level']   = level
         self.settings['headers'] = headers
-        self.basereq = BaseRequest(url)
-        self.website = BaseWebSite(url,proxy=self.settings['proxy'],session=self.session)
-        self.pag404  = self.website.pag404
-        self.block               = []#set()
-        self.ISSTART             = True
-        self.ReqQueue            = queue.Queue()
-        self.ResQueue            = queue.Queue()
-        self.SubDomain           = set()  #子域名列表
-        self.Directory           = {}     #目录结构
-        self.cert = cert
-        self.url = url
+        self.session    = Session()
+        self.basereq    = BaseRequest(url)
+        self.website    = BaseWebSite(url,proxy=self.settings['proxy'],session=self.session)
+        self.block      = []#set()
+        self.ISSTART    = True
+        self.ReqQueue   = queue.Queue()
+        self.ResQueue   = queue.Queue()
+        self.SubDomain  = set()  #子域名列表
+        self.Directory  = {}     #目录结构
+        self.page20x    = set()
+        self.page30x    = set()
+        self.page40x    = set()
+        self.page50x    = set()
+        self.cert       = cert
+        self.url        = url
 
     def reqhook(self,req):
         '''用于请求时重写hook

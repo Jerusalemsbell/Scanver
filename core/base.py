@@ -12,7 +12,14 @@ from core.cmsfind import CmsFind
 #CMS = CmsFind(settings.DATAPATH + '/cmsdata.json')
 
 ####################################
-class BaseWebSite(object):
+class BaseHost(object):
+    '''主机'''
+    def __init__(self,host,port,service='unknow'):
+        self.host = host
+        self.port = int(port)
+        self.service = service
+
+class BaseWebSite(BaseHost):
     '''定义一个网站的基类'''
     def __init__(self,url,proxy={},session=None,load=True):
         self.proxy = proxy
@@ -21,19 +28,18 @@ class BaseWebSite(object):
             url = 'http:'+url
         if url and not url.upper().startswith('HTTP'):
             url = 'http://%s'%url
-        self.url        = url
-        parser          = urlparse.urlsplit(self.url)
-        self.scheme     = parser.scheme #https
-        self.netloc     = parser.netloc #www.baidu.com
-        self.path       = parser.path   #www.baidu.com
-        self.domain     = ''
-        if re.search('a-z',self.netloc,re.I):
-            self.domain = self.netloc.split(':')[0]
-        self.host = self.gethostbyname(self.netloc.split(':')[0])
+        self.url      = url
+        parser        = urlparse.urlsplit(self.url)
+        self.scheme   = parser.scheme #https
+        self.netloc   = parser.netloc #www.baidu.com
+        self.path     = parser.path   #www.baidu.com
+        self.domain   = self.netloc
+        self.host     = self.gethostbyname(self.netloc.split(':')[0])
         try:
             self.port = self.netloc.split(':')[1]
         except:
             self.port = 443 if self.scheme.upper() == 'HTTPS' else 80
+        BaseHost.__init__(self,self.host,self.port,self.scheme)
         self.status_code= 0
         self._content   = set() #struts2 dedecms ...
         self.headers    = {}
@@ -43,19 +49,15 @@ class BaseWebSite(object):
         self.cmsver     = ''
         self.load()
         if load:
-            self.pag404     = self.getpag404()
             #self.cmsver = '|'.join(list(CMS.load(self.url)))
             if 'JSP' in self.xpoweredby:
-                server = self.javaserver(self.scheme,self.netloc)
+                server = self.javaserver()
                 self.server = server + '|' + self.server if server else res.headers.get('Server')
-        
-
-    def getpag404(self):
-        url = self.url + "/pag404notfindtestscanol.%s"%self.host
-        return self.session.get(url,allow_redirects=True,verify=False,proxies=self.proxy)
 
     def load(self):
-        res = self.session.get(self.url,allow_redirects=False,verify=False,proxies=self.proxy)
+        url = self.url + "/../../../../pag404.php.jsp.asp.js.jpg.%s"%self.host
+        res = self.session.get(url,verify=False,proxies=self.proxy)
+        self.page404 = res
         self.headers = res.headers
         self.server = res.headers.get('Server',self.server)
         xpoweredby1 = res.headers.get('X-Powered-By','')
@@ -98,7 +100,16 @@ class BaseWebSite(object):
            xpoweredby += 'PHP'
         """
         return xpoweredby
-
+    @staticmethod
+    def javaserver(res):
+        server = ' '
+        tomcat = ''.join(re.findall("<h3>(.*?)</h3>",res.text))
+        weblogic = ''.join(re.findall("<H4>(.*?)404 Not Found</H4>",res.text))
+        if 'Tomcat' in res.text:
+            server = tomcat
+        if 'Hypertext' in res.text:
+            server = 'Weblogic '+weblogic
+        return server
     @staticmethod
     def gethostbyname(name):
         '''域名查ip'''
@@ -106,22 +117,6 @@ class BaseWebSite(object):
             return socket.gethostbyname(name)
         except socket.gaierror:
             return name
-
-    @staticmethod
-    def javaserver(scheme,netloc):
-        server = ' '
-        try:
-            res = self.pag404
-            tomcat = ''.join(re.findall("<h3>(.*?)</h3>",res.text))
-            weblogic = ''.join(re.findall("<H4>(.*?)404 Not Found</H4>",res.text))
-            if res.status_code == 404:
-                if 'Tomcat' in res.text:
-                    server = tomcat
-                if 'Hypertext' in res.text:
-                    server = 'Weblogic '+weblogic
-        except:pass
-        return server
-
     @property
     def content(self):
         for s in self.server.split('|') + self.xpoweredby.split('|'):
@@ -129,7 +124,6 @@ class BaseWebSite(object):
         if self.cmsver:
             self._content.add(self.cmsver.strip())
         return '|'.join(self._content).lower()
-
     @content.setter
     def content(self,value):
         self._content.add(value)
@@ -216,13 +210,6 @@ class BaseRequest(object):
 
     def __hash__(self):
         return hash(self._diff_())
-
-class BaseHost(object):
-    '''主机'''
-    def __init__(self,host,port,service=None):
-        self.host = host
-        self.port = int(port)
-        self.service = service
 
 class ConnectionError(requests.ConnectionError):
     pass

@@ -33,6 +33,39 @@ import settings
 requests.packages.urllib3.disable_warnings()
 
 class BaseScan(object):
+    @classmethod
+    def gethttptitle(self):    
+        MP = models.PortResult
+        sw = MP.port_type != 'tcp/http'
+        sw &= MP.service_name == 'http'
+        pool = CoroutinePool(10)
+        for q in MP.select().where(sw):
+            pool.spawn(self.selecthttp,q)
+        pool.join()
+    @classmethod
+    def selecthttp(self,q):
+        '''获取http服务的headers信息'''
+        h = str(q.host)
+        p = str(q.port)
+        pto = 'https' if '443' in p else 'http'
+        url = '%s://%s:%s/'%(pto, h, p)
+        q.port_type = 'tcp/http/%s'%self.writewebsite(BaseWebSite(url,load=False))
+        q.save()
+    @classmethod
+    def writewebsite(self,w):
+        #logging.info("Writewebsite %s %s %s %s "%(w.status_code,w.host,w.port,w.domain))
+        r,cd = models.HttpResult.get_or_create(host=w.host,port=w.port)
+        r.state     = w.status_code
+        r.banner    = w.server
+        r.domain    = w.domain
+        r.xpoweredby= w.xpoweredby
+        r.title     = w.title
+        r.headers   = w.headers
+        r.content   = w.content
+        r.updatedate= datetime.datetime.now()
+        r.save()
+        return w.status_code
+
     def __init__(self,taskid):
         PluginsManage.load('./payloads')
         M = models.ScanTask
@@ -109,7 +142,7 @@ class BaseScan(object):
         try:
             socket.setdefaulttimeout(360)
             if not filter or plug.filter(host):
-                #logging.info('filter %s-%s-%s'%(plug.__class__,host.host,host.port))
+                logging.info('filter %s-%s-%s-%s'%(plug.__class__,host.service,host.host,host.port))
                 for user,pwd in self.auths if plug.BRUTE else [(None,'123456')]:
                     if user:
                         verify = plug.verify(host,user=user,pwd=pwd)
@@ -119,34 +152,9 @@ class BaseScan(object):
                         logging.warn('verify %s-%s-%s-%s-%s'%(plug.__class__,host.host,host.port,user,pwd))
                         return self.callback_bug(plug)
         except Exception as e:
-            type,value,tb = sys.exc_info()
-            e = '\n'.join(set(traceback.format_exception(type,value,tb)))
+            #type,value,tb = sys.exc_info()
+            #e = '\n'.join(set(traceback.format_exception(type,value,tb)))
             logging.error(str(e))
-
-    def selecthttp(self,q):
-        '''获取http服务的headers信息'''
-        h = str(q.host)
-        p = str(q.port)
-        pto = 'https' if '443' in p else 'http'
-        url = '%s://%s:%s/'%(pto, h, p)
-        self.writewebsite(BaseWebSite(url,load=False))
-        q.port_type = 'tcp/http'
-        q.save()
-
-    def writewebsite(self,w):
-        #logging.info("Writewebsite %s %s %s %s "%(w.status_code,w.host,w.port,w.domain))
-        if w.status_code != 0:
-            r,cd = models.HttpResult.get_or_create(host=w.host,port=w.port)
-            r.state     = w.status_code
-            r.banner    = w.server
-            r.domain    = w.domain
-            r.xpoweredby= w.xpoweredby
-            r.title     = w.title
-            r.headers   = w.headers
-            r.content   = w.content
-            r.updatedate= datetime.datetime.now()
-            r.save()
-        return w.status_code
 
     def callback_bug(self,payload):
         '''回调写入漏洞信息'''
@@ -233,8 +241,8 @@ class HttpScan(BaseScan):
             except queue.Empty:
                 pass
             except Exception as e:
-                type,value,tb = sys.exc_info()
-                e = '\n'.join(set(traceback.format_exception(type,value,tb)))
+                #type,value,tb = sys.exc_info()
+                #e = '\n'.join(set(traceback.format_exception(type,value,tb)))
                 logging.error(str(e))
 
     def scan(self):
@@ -273,14 +281,6 @@ class ServiceScan(BaseScan):
         for target in [self.target] if ping else gethosts(self.target):
             self.portscan(target)
 
-        MP = models.PortResult
-        sw = MP.port_type != 'tcp/http'
-        sw &= MP.service_name == 'http'
-        pool = CoroutinePool(10)
-        for q in MP.select().where(sw):
-            pool.spawn(self.selecthttp,q)
-        pool.join()
-
 class HostsScan(BaseScan):
     def scan(self):
 
@@ -308,7 +308,6 @@ class HostsScan(BaseScan):
         for plug,host in ret:
             pool.spawn(self.payloadverify,plug,host)
         pool.join()
-
 
 class PluginsScan(BaseScan):
     def scan(self):

@@ -322,7 +322,8 @@ class BakFileInfo(BaseWebPlugin):
             for d in data.split():
                 u = url + d
                 res = requests.get(u)
-                if res.status_code == 200 and res.headers.get("Content-Length") != web.pag404.headers.get("Content-Length"):
+                if res.status_code == 200 \
+                and res.headers.get("Content-Length") != web.page404.headers.get("Content-Length")
                     ret.append((u,res.headers))
             if ret:
                self.bugaddr = url
