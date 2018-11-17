@@ -283,7 +283,7 @@ class XssScripting(BaseHttpPlugin):
                     x,y = r1.regs[0]
                     self.bugaddr = req.url
                     self.bugreq = str(req)
-                    self.bugres = res.text[x-5:y+5]
+                    self.bugres = res.text[x-10:y+10]
                     return True
                 req.params[k] = v
 
@@ -295,7 +295,7 @@ class XssScripting(BaseHttpPlugin):
                     x,y = r2.regs[0]
                     self.bugaddr = req.url
                     self.bugreq = str(req)
-                    self.bugres = res.text[x-5:y+5]
+                    self.bugres = res.text[x-10:y+10]
                     return True
                 req.data[k] = v
 
