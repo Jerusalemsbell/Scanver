@@ -55,7 +55,7 @@ class BaseWebSite(BaseHost):
                 self.server = server + '|' + self.server if server else res.headers.get('Server')
 
     def load(self):
-        url = self.url + "/../../../../pag404.php.jsp.asp.js.jpg.%s"%self.host
+        url = self.url + "/pag404.php.jsp.asp.js.jpg.%s"%self.host
         res = self.session.get(url,verify=False,proxies=self.proxy)
         self.page404 = res
         self.headers = res.headers
@@ -133,30 +133,27 @@ class BaseRequest(object):
     def __init__(self,url,data={},method='GET',headers={},
         files={},cookies={},auth=None,hooks=None, json=None,
         session=None,proxy={}):
-        if url and url.startswith('//'):
+        if url and((url.startswith('//'))or(not url.upper().startswith('HTTP'))):
             url = 'http:'+url
-        if url and not url.upper().startswith('HTTP'):
-            url = 'http://%s'%url
         self.url    = url
-        self.data   = data
         self.method = method.strip()
         self.version= 'HTTP/1.1'
         parser      = urlparse.urlsplit(self.url)
         self.scheme = parser.scheme #https
         self.netloc = parser.netloc #www.baidu.com
         self.path   = parser.path   #/params.php
-        params      = parser.query  #a=1&b=2
+        self.params = dict([q.split('=')[:2] for q in parser.query.split('&') if '=' in q])
         self.headers= {
             "User-Agent":"Mozilla/Scanolv1.1",
             "Accept-Language":"zh-CN,zh;q=0.8",
             "Connection":"keep-alive",
             "Referer":'%s://%s/'%(self.scheme,self.netloc),}
         self.headers.update(headers)
-        self.params  = {}
-        if params:
-           self.params = dict([q.split('=')[:2] for q in params.split('&') if '=' in q])
         if data and method == 'GET':
-            self.method = 'POST'
+            self.params.update(data)
+            self.data   = {}
+        else:
+            self.data   = data
         self.auth   = auth 
         self.json   = json
         self.cookies= cookies
@@ -186,7 +183,7 @@ class BaseRequest(object):
     def prepare(self):
         return Request(
             method=self.method,
-            url=self.url,
+            url='%s://%s%s'%(self.scheme,self.netloc,self.path),
             headers=self.headers,
             files=self.files,
             data=self.data,
@@ -201,12 +198,12 @@ class BaseRequest(object):
             self.session.prepare_request(self.prepare()),
             proxies=self.proxy,verify=False)
             
-    def _diff_(self):
+    def _diff(self):
         return (self.method,self.netloc,self.path,
             ''.join(self.params.keys()),
             ''.join(self.data.keys()),)
     def __eq__(self,req):
-        return self._diff_() == req._diff_()
+        return self._diff() == req._diff()
 
     def __hash__(self):
         return hash(self._diff_())

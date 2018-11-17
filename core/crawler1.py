@@ -9,6 +9,7 @@ import time
 import re
 import os
 import sys
+import traceback
 import queue
 import threading
 import urllib.parse as urlparse
@@ -21,8 +22,21 @@ import settings
 
 #APP = AppFind(settings.DATAPATH + '/appdata.json')
 class Page(object):
-    def __init__
-class Crawler(object):
+    def __init__(self,response):
+        self.response = response
+        self.status_code = response.status_code 
+
+    def _diff(self):
+        return (
+            self.status_code,
+        ) 
+    def __eq__(self,res):
+        return self._diff() == res._diff()
+    def __hash__(self):
+        return hash(self._diff())
+
+
+class Crawler(threading.Thread):
     HEADBLOCK = ('#','data:','javascript:','mailto:','about:','magnet:')
     TYPEBLOCK = (
         ".3ds", ".3g2", ".3gp", ".7z", ".a", ".aac", ".adp", ".ai", ".aif", ".aiff", ".apk", ".ar", ".asf",
@@ -41,11 +55,11 @@ class Crawler(object):
         ".whl", ".wm", ".wma", ".wmv", ".wmx", ".woff", ".woff2", ".wvx", ".xbm", ".xif", ".xls", ".xlsx", ".xlt", ".xm",
         ".xpi", ".xpm", ".xwd", ".xz", ".z", ".zip", ".zipx")
     ERRFLAG403 = re.compile(r'Error|Error Page|Unauthorized|Welcome to tengine!|Welcome to OpenResty!|invalid service url|Not Found|不存在|未找到|410 Gone|looks like something went wrong|Bad Request|Welcome to nginx!', re.I)
-    ERRFLAG404 = re.compile
-    ERRFLAG500 = re.compile
-
+    ERRFLAG404 = re.compile(r'')
+    ERRFLAG500 = re.compile(r'')
 
     def __init__(self,url,headers={},threads=10,timeout=60,sleep=10,proxy={},level=False,cert=None):
+        threading.Thread.__init__(self)
         self.settings            = {}
         self.settings['threads'] = int(threads)
         self.settings['timeout'] = int(timeout)
@@ -54,20 +68,20 @@ class Crawler(object):
         self.settings['level']   = level
         self.settings['headers'] = headers
         self.session    = Session()
-        self.basereq    = BaseRequest(url)
-        self.website    = BaseWebSite(url,proxy=self.settings['proxy'],session=self.session)
         self.block      = []#set()
+        self.cert       = cert
+        self.url        = url
+        self.basereq    = None
+        self.website    = None
         self.ISSTART    = True
         self.ReqQueue   = queue.Queue()
         self.ResQueue   = queue.Queue()
-        self.SubDomain  = set()  #子域名列表
         self.Directory  = {}     #目录结构
-        self.page20x    = set()
-        self.page30x    = set()
-        self.page40x    = set()
-        self.page50x    = set()
-        self.cert       = cert
-        self.url        = url
+        self.SubDomain  = set()  #子域名列表
+        self.Page20x    = set()
+        self.Page30x    = set()
+        self.Page40x    = set()
+        self.Page50x    = set()
 
     def reqhook(self,req):
         '''用于请求时重写hook
@@ -114,7 +128,7 @@ class Crawler(object):
             #    proxies=self.settings['proxy'],
             #    timeout=self.settings['timeout'])
             res = req.response()
-            logging.info("%s %s"%(res.status_code,req.url))
+            logging.info("%s-%s"%(res.status_code,req.url))
             self.ResQueue.put((req,res))
             self.parse(res)
             #app 识别
@@ -124,13 +138,19 @@ class Crawler(object):
             logging.warn(str(e))
             time.sleep(self.settings['sleep'])
         except Exception as e:
-            logging.warn(str(e))
+            type,value,tb = sys.exc_info()
+            e = '\n'.join(set(traceback.format_exception(type,value,tb)))
+            logging.error(str(e))
 
     def parse(self,response):
         content_type = response.headers.get('content-type','text')
-        if content_type not in ("image","octet-stream"):
+        if 'text' in content_type or 'javascript' in content_type:
             response = response.text
             urls = set()
+            #urls = urls.union(set(re.findall(r"""[href|src][\s]*[:=]["'\s]*(.*?)["'\s>]""",response)))
+            
+            urls = urls.union(set(re.findall(r"""src=([^'"].*?[^'"])[>\s]""",response)))
+            urls = urls.union(set(re.findall(r"""href=([^'"].*?[^'"])[>\s]""",response)))
             urls = urls.union(set(re.findall(r"""src[\s]*:[\s]*["'](.*?)["']""",response)))
             urls = urls.union(set(re.findall(r"""src[\s]*=[\s]*["'](.*?)["']""",response)))
             urls = urls.union(set(re.findall(r"""href[\s]*:[\s]*["'](.*?)["']""",response)))
@@ -141,32 +161,40 @@ class Crawler(object):
             urls = urls.union(set(re.findall(r"""['"]([A-Za-z0-9\.\\/_-]{1,255}[a-zA-Z]\?[a-zA-Z].*?)['"]""",response)))
             urls = urls.union(set(re.findall("""(http[s]?://(?:[-a-zA-Z0-9_]+\.)+[a-zA-Z]+(?::\d+)?(?:/[-a-zA-Z0-9_%./]+)*\??[-a-zA-Z0-9_&%=.]*)""",response)))
             for url in urls:
+                url = self.urljoin(url)
                 if url:
-                    req = BaseRequest(self.urljoin(url),session=self.session,proxy=self.settings['proxy'])
+                    req = BaseRequest(url,session=self.session,proxy=self.settings['proxy'])
                     self.addreq(req)
 
             if self.settings['level']:
-                posts = []
-                for f in re.findall(r"""<form([\s\S]*?)</form>""",response):
+                posts=[]
+                for k,v in re.findall(r"""<form([\s\S]*?>)([\s\S]*?)</form>""",response):
                     post = {}
-                    post['action'] = ''.join(re.findall(r"""action[\s]*=[\s]*["'](.*?)["']""",f)) or './'
-                    post['method'] = ''.join(re.findall(r"""method[\s]*=[\s]*["'](.*?)["']""",f)) or 'POST'
+                    post['action'] = ''.join(re.findall(r"""action[\s]*=["'\s]*(.*?)["'\s>]""",k)) or './'
+                    post['method'] = ''.join(re.findall(r"""method[\s]*=["'\s]*(.*?)["'\s>]""",k)) or 'POST'
                     post['data'] = {}
-                    for d in re.findall(r"""<input[\s\S]*?>""",f):
-                        name = ''.join(re.findall(r"""name[\s]*=[\s]*["'](.*?)["']""",d))
-                        value = ''.join(re.findall(r"""value[\s]*=[\s]*["'](.*?)["']""",d))
+                    for d in re.findall(r"""<input([\s\S]*?)>""",v):
+                        name = ''.join(re.findall(r"""name[\s]*=["'\s]*(.*?)["'\s>]""",d))
+                        value = ''.join(re.findall(r"""value[\s]*=["'\s]*(.*?)["'\s>]""",d))
                         if not value:value = name
                         post['data'].update({name:value})
                     posts.append(post)
                 for post in posts:
+                    #print(post)
                     req = BaseRequest(self.urljoin(post['action']),method=post['method'],data=post['data'],session=self.session,proxy=self.settings['proxy'])
                     self.addreq(req)
 
-    def run1(self):
+    def run(self):
         pool = ThreadPool(self.settings['threads'])
         self.FLAG = self.settings['timeout']
+        req = BaseRequest(self.url,proxy=self.settings['proxy'],session=self.session)
+        res = req.response()
+        self.basereq = req 
+        self.basereq.url = res.url
+        self.website = BaseWebSite(self.basereq.url,proxy=self.settings['proxy'],session=self.session)
+        
         try:
-            self.request(BaseRequest(self.url,headers=self.settings['headers']))
+            self.request(BaseRequest(self.url,headers=self.settings['headers'],session=self.session,proxy=self.settings['proxy']))
         except Exception as e:
             print(e)
             self.ISSTART = False
@@ -192,7 +220,7 @@ if __name__ == '__main__':
         threads=100,
         proxy={'http':'http://127.0.0.1:1111','https':'http://127.0.0.1:1111'},
         level=True)
-    threading.Thread(target=x.run1).start()
+    x.start()
 
     while x.ISSTART or not x.ResQueue.empty():
         try:
