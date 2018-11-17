@@ -96,7 +96,7 @@ class IntranetIPleakage(BaseHttpPlugin):
         r = self.PAYLOADS.findall(res.text)
         if r:
            self.bugaddr = req.url
-           self.bugreq = '\r\n'.join(r)
+           self.bugreq = '\r\n'.join([i[0] for i in r])
            return True
 
 class DirectoryListing(BaseHttpPlugin):
