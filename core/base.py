@@ -65,7 +65,7 @@ class BaseWebSite(object):
         self.status_code = res.status_code
         self.title = ''.join(
                     re.findall(r"<title>([\s\S]*?)</title>",
-                    res.text.encode(res.encoding).decode('utf-8'),
+                    res.text,#.encode(res.encoding).decode('utf-8'),
                     re.I))
         self.server = res.headers.get('Server',self.server)
         xpoweredby3 = res.headers.get('X-Powered-By',self.xpoweredby)
@@ -153,8 +153,7 @@ class BaseRequest(object):
         self.path   = parser.path   #/params.php
         params      = parser.query  #a=1&b=2
         self.headers= {
-            "User-Agent":"Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.87 Safari/537.36",
-            "Accept-Encoding":"gzip, deflate, sdch",
+            "User-Agent":"Mozilla/Scanolv1.1",
             "Accept-Language":"zh-CN,zh;q=0.8",
             "Connection":"keep-alive",
             "Referer":'%s://%s/'%(self.scheme,self.netloc),}
