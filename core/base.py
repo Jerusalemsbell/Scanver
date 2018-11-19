@@ -65,9 +65,11 @@ class BaseWebSite(BaseHost):
         self.xpoweredby = xpoweredby2+'|'+self.xpoweredby if xpoweredby2 else xpoweredby1
         res = self.session.get(self.url,verify=False,proxies=self.proxy)
         self.status_code = res.status_code
-        self.title = ''.join(
+        text = res.text
+        if text:
+            self.title = ''.join(
                     re.findall(r"<title>([\s\S]*?)</title>",
-                    res.text,#.encode(res.encoding).decode('utf-8'),
+                    text.encode(res.encoding).decode('utf-8'),
                     re.I))
         self.server = res.headers.get('Server',self.server)
         xpoweredby3 = res.headers.get('X-Powered-By',self.xpoweredby)
@@ -194,9 +196,10 @@ class BaseRequest(object):
         )
 
     def response(self):
-        return self.session.send(
-            self.session.prepare_request(self.prepare()),
-            proxies=self.proxy,verify=False)
+        req = self.session.prepare_request(self.prepare())
+        res = self.session.send(req,proxies=self.proxy,verify=False)
+        logging.info("%s-%s-%s"%(res.status_code,req.method,req.url))
+        return res
             
     def _diff(self):
         return (self.method,self.netloc,self.path,

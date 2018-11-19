@@ -152,8 +152,8 @@ class BaseScan(object):
                         logging.warn('verify %s-%s-%s-%s-%s'%(plug.__class__,host.host,host.port,user,pwd))
                         return self.callback_bug(plug)
         except Exception as e:
-            #type,value,tb = sys.exc_info()
-            #e = '\n'.join(set(traceback.format_exception(type,value,tb)))
+            type,value,tb = sys.exc_info()
+            e = '\n'.join(set(traceback.format_exception(type,value,tb)))
             logging.error(str(e))
 
     def callback_bug(self,payload):
@@ -224,8 +224,10 @@ class BaseScan(object):
 
 class HttpScan(BaseScan):
     def webscan(self):
+        pool = CoroutinePool(3)
         for payload in BaseWebPlugin.payloads():
-            self.payloadverify(payload,self.crawle.website)
+            pool.spawn(self.payloadverify,payload,self.crawle.website)
+        pool.join()
 
     def httpscan(self):
         while self.crawle.ISSTART or not self.crawle.ResQueue.empty():
@@ -235,20 +237,26 @@ class HttpScan(BaseScan):
                 req = copy.deepcopy(req)
                 res = copy.deepcopy(res)
                 for payload in BaseHttpPlugin.payloads():
-                    payload.filter(self.crawle,req,res) \
-                    and payload.verify(self.crawle,req,res) \
-                    and self.callback_bug(payload)
+                    try:
+                        payload.filter(self.crawle,req,res) \
+                        and payload.verify(self.crawle,req,res) \
+                        and self.callback_bug(payload)
+                    except Exception as e:
+                        print(e)
             except queue.Empty:
                 pass
             except Exception as e:
-                #type,value,tb = sys.exc_info()
-                #e = '\n'.join(set(traceback.format_exception(type,value,tb)))
+                type,value,tb = sys.exc_info()
+                e = '\n'.join(set(traceback.format_exception(type,value,tb)))
                 logging.error(str(e))
 
     def scan(self):
-        level = int(self.args.get('level',1)) #post 扫描
         headers = json.loads(self.args.get('headers',"{}"))
         proxy= json.loads(self.args.get('proxy',"{}"))
+        level = int(self.args.get('level',1)) #post 扫描
+        threads = int(self.args.get('threads',10))
+        timeout = int(self.args.get('timeout',60))
+        sleep = int(self.args.get('sleep',2))
 
         if not self.target.startswith(('http','HTTP')):
             self.target = 'http://' + self.target
@@ -257,12 +265,13 @@ class HttpScan(BaseScan):
 
         for target in gethosts(self.target):
             self.portscan(target)
-        self.crawle = Crawler(self.target)
-        self.crawle.settings.update(self.args)
+        self.crawle = Crawler(self.target,
+            level=1,headers=headers,proxy=proxy,threads=threads,timeout=timeout,sleep=sleep)
+        #self.crawle.settings.update(self.args)
         #self.crawle.settings.update(proxy={'http':'http://127.0.0.1:1111','https':'http://127.0.0.1:1111'})
-        
+        self.crawle.start()
         th=[]
-        th.append(threading.Thread(target=self.crawle.run1))
+        #th.append(threading.Thread(target=self.crawle.run1))
         th.append(threading.Thread(target=self.webscan))
         th.append(threading.Thread(target=self.httpscan))
         for t in th:
@@ -391,3 +400,9 @@ class DomainScan(BaseScan):
         self.baiduce(target)
         self.brute(target)
         self.writehost([(h,80,1,'http','',d) for d,h in self.result])
+
+
+class GetTitle(BaseScan):
+    def scan(self):
+        self.gethttptitle()
+

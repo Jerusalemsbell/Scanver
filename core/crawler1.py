@@ -58,7 +58,7 @@ class Crawler(threading.Thread):
     ERRFLAG404 = re.compile(r'')
     ERRFLAG500 = re.compile(r'')
 
-    def __init__(self,url,headers={},threads=10,timeout=60,sleep=10,proxy={},level=False,cert=None):
+    def __init__(self,url,headers={},threads=10,timeout=60,sleep=2,proxy={},level=False,cert=None):
         threading.Thread.__init__(self)
         self.settings            = {}
         self.settings['threads'] = int(threads)
@@ -71,8 +71,12 @@ class Crawler(threading.Thread):
         self.block      = []#set()
         self.cert       = cert
         self.url        = url
-        self.basereq    = None
-        self.website    = None
+        req = BaseRequest(self.url,proxy=self.settings['proxy'],session=self.session)
+        res = req.response()
+        self.basereq    = req 
+        self.basereq.url= res.url
+        self.website    = BaseWebSite(self.basereq.url,proxy=self.settings['proxy'],session=self.session)
+        
         self.ISSTART    = True
         self.ReqQueue   = queue.Queue()
         self.ResQueue   = queue.Queue()
@@ -128,7 +132,6 @@ class Crawler(threading.Thread):
             #    proxies=self.settings['proxy'],
             #    timeout=self.settings['timeout'])
             res = req.response()
-            logging.info("%s-%s"%(res.status_code,req.url))
             self.ResQueue.put((req,res))
             self.parse(res)
             #app 识别
@@ -187,16 +190,10 @@ class Crawler(threading.Thread):
     def run(self):
         pool = ThreadPool(self.settings['threads'])
         self.FLAG = self.settings['timeout']
-        req = BaseRequest(self.url,proxy=self.settings['proxy'],session=self.session)
-        res = req.response()
-        self.basereq = req 
-        self.basereq.url = res.url
-        self.website = BaseWebSite(self.basereq.url,proxy=self.settings['proxy'],session=self.session)
-        
         try:
-            self.request(BaseRequest(self.url,headers=self.settings['headers'],session=self.session,proxy=self.settings['proxy']))
+            self.request(BaseRequest(self.basereq.url,headers=self.settings['headers'],session=self.session,proxy=self.settings['proxy']))
         except Exception as e:
-            print(e)
+            print('err',e)
             self.ISSTART = False
             return
         #5分钟后还没有任务加进来就当爬完了

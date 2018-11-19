@@ -202,12 +202,12 @@ class SQLInjection(BaseHttpPlugin):
                 match0 = sql_regex.search(res.text)
                 match1 = sql_regex.search(res1.text)
                 match2 = sql_regex.search(res2.text)
-                if((not match0)and(match1))or((req.params[k] in res1.text)and(req.params[k] not in res.text)):
+                if match1 and not match0:
                     self.bugaddr = req.url
                     self.bugreq = str(req)
                     self.bugres = match1.group(0)
                     return True
-                elif(not match0)and(match2)or((req.params[k] in res2.text)and(req.params[k] not in res.text)):
+                elif match2 and not match0:
                     self.bugaddr = req.url
                     self.bugreq = str(req)
                     self.bugres = match2.group(0)
