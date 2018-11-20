@@ -770,9 +770,11 @@ class ApiAction(object):
         MB = models.BugResult
         for tid in tasklist:
             R1 = M.get(M.task_id == tid)
+            task_pid = str(R1.task_pid)
             R2 = MB.delete().where(MB.taskid==R1).execute()
             R1.delete_instance()
-            TaskManage.stoptask(R1.task_pid)
+            TaskManage.stoptask(task_pid)
+            
     @Authenticated(2)
     def _scanntaskinfo_action(self,data):
         '''任务详情'''
