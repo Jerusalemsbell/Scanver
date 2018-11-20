@@ -47,7 +47,10 @@ class BaseWebSite(BaseHost):
         self.xpoweredby = '|' #X-Powered-By: PHP/5.6.31'
         self.title      = ''
         self.cmsver     = ''
-        self.load()
+        try:
+            self.load()
+        except:
+            pass
         if load:
             #self.cmsver = '|'.join(list(CMS.load(self.url)))
             if 'JSP' in self.xpoweredby:
@@ -56,20 +59,21 @@ class BaseWebSite(BaseHost):
 
     def load(self):
         url = self.url + "/pag404.php.jsp.asp.js.jpg.%s"%self.host
-        res = self.session.get(url,verify=False,proxies=self.proxy)
+        res = self.session.get(url,verify=False,proxies=self.proxy,timeout=60)
         self.page404 = res
         self.headers = res.headers
         self.server = res.headers.get('Server',self.server)
         xpoweredby1 = res.headers.get('X-Powered-By','')
         xpoweredby2 = self.findxpoweredby(res)
         self.xpoweredby = xpoweredby2+'|'+self.xpoweredby if xpoweredby2 else xpoweredby1
-        res = self.session.get(self.url,verify=False,proxies=self.proxy)
+        res = self.session.get(self.url,verify=False,proxies=self.proxy,timeout=60)
         self.status_code = res.status_code
         text = res.text
+        code = res.encoding or 'utf8'
         if text:
             self.title = ''.join(
                     re.findall(r"<title>([\s\S]*?)</title>",
-                    text.encode(res.encoding).decode('utf-8'),
+                    text.encode(code).decode('utf-8'),
                     re.I))
         self.server = res.headers.get('Server',self.server)
         xpoweredby3 = res.headers.get('X-Powered-By',self.xpoweredby)

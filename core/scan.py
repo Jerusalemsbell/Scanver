@@ -36,24 +36,28 @@ class BaseScan(object):
     @classmethod
     def gethttptitle(self):    
         MP = models.PortResult
-        sw = MP.port_type != 'tcp/http'
+        sw = MP.port_type == 'tcp'
         sw &= MP.service_name == 'http'
         pool = CoroutinePool(10)
         for q in MP.select().where(sw):
             pool.spawn(self.selecthttp,q)
+            #self.selecthttp(q)
         pool.join()
+        print('task done')
     @classmethod
     def selecthttp(self,q):
         '''获取http服务的headers信息'''
         h = str(q.host)
         p = str(q.port)
+        print(h,p)
         pto = 'https' if '443' in p else 'http'
         url = '%s://%s:%s/'%(pto, h, p)
-        q.port_type = 'tcp/http/%s'%self.writewebsite(BaseWebSite(url,load=False))
+        w = BaseWebSite(url,load=False)
+        q.port_type = 'tcp/http/%s'%self.writewebsite(w)
         q.save()
     @classmethod
     def writewebsite(self,w):
-        #logging.info("Writewebsite %s %s %s %s "%(w.status_code,w.host,w.port,w.domain))
+        logging.info("Writewebsite %s %s %s %s "%(w.status_code,w.host,w.port,w.domain))
         r,cd = models.HttpResult.get_or_create(host=w.host,port=w.port)
         r.state     = w.status_code
         r.banner    = w.server
@@ -64,7 +68,6 @@ class BaseScan(object):
         r.content   = w.content
         r.updatedate= datetime.datetime.now()
         r.save()
-        return w.status_code
 
     def __init__(self,taskid):
         PluginsManage.load('./payloads')
