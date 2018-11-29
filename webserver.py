@@ -1204,6 +1204,47 @@ class ApiAction(object):
             })
         result['ret'] = ret
         return result
+
+    @Authenticated(1)
+    def _userinfo_action(self,data):
+        '''获取个人信息'''
+        M = models.User
+        Q = M.get(M.uid == self.session['userid'])
+        ret = {}
+        ret.update({
+            'uid':str(Q.uid),
+            'username':str(Q.username),
+            'group':str(Q.group),
+            'company':str(Q.company),
+            'department':str(Q.department.name),
+            'realname':str(Q.realname),
+            'phone':str(Q.phone),
+            'email':str(Q.email),
+        })
+        return ret
+
+
+    @Authenticated(1)
+    def _userupdate_action(self,data):
+        '''修改个人资料'''
+        realname = data.get('realname')
+        phone = data.get('phone')
+        oldpass = data.get('oldpwd')
+        newpass = data.get('newpwd')
+
+        M = models.User
+        Q = M.get(M.uid == self.session['userid'])
+        if oldpass and newpass:
+            if Q._check_password(oldpass):
+                Q.password = Q._create_password(newpass)
+            else:
+                self.json['code'] = 401
+                self.json['error'] = '密码错误'
+        else:
+            Q.realname = realname
+            Q.phone = phone 
+        return Q.save()
+
 #######################插件管理############################################
     @Authenticated(3)
     def _pluginedit_action(self,data):

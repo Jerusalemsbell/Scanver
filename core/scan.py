@@ -50,7 +50,7 @@ class BaseScan(object):
         h = str(q.host)
         p = str(q.port)
         print(h,p)
-        pto = 'https' if '443' in p else 'http'
+        pto = 'https' if ('443' in p or str(q.status_code) == '400')  else 'http'
         url = '%s://%s:%s/'%(pto, h, p)
         w = BaseWebSite(url,load=False)
         q.port_type = 'tcp/http/%s'%self.writewebsite(w)

@@ -17,7 +17,7 @@ class FtpWeakPass(BaseHostPlugin):
         return host.port == 21 or host.service == 'ftp'
 
     @brute
-    def verify(self,host,user='anonymous',pwd='',timeout=5):
+    def verify(self,host,user='ftp',pwd='',timeout=5):
         socket.setdefaulttimeout(timeout)
         ftp = ftplib.FTP()
         try:
