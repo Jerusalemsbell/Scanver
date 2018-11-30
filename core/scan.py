@@ -186,7 +186,7 @@ class BaseScan(object):
           for host,value in ret.items():
             for host,port,protocol,state,service,product,extrainfo,version,data in value['ports']:
                 RH,created      = models.ScanHostPortTemp.get_or_create(
-                                    taskid = self.Q
+                                    taskid = self.Q,
                                     host = host,
                                     port = port)
                 #RH.host         = host 
@@ -244,7 +244,7 @@ class BaseScan(object):
         target = target.difference(set(block))
         if isfilter:
             H = models.HostResult
-            hosts = set([(h.host_ip) for h in H.select().where(H.projectid = self.Q.projectid)])
+            hosts = set([(h.host_ip) for h in H.select().where(H.projectid == self.Q.projectid)])
             target = target.difference(hosts)
 
         ps = PortScan(
