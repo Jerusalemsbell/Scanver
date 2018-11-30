@@ -724,7 +724,7 @@ class ApiAction(object):
         task_host = data.get('task_host')
         task_name = data.get('task_name',[])
         task_level = data.get('task_level',3)
-        task_args = data.get('task_args',{})
+        task_args = json.dumps(data.get('task_args',{}))
         task_note = data.get('task_note')
         task_node = data.get('task_node')
         
@@ -775,7 +775,7 @@ class ApiAction(object):
             R1.delete_instance()
             TaskManage.stoptask(task_pid)
             
-    @Authenticated(2)
+    #@Authenticated(2)
     def _scanntaskinfo_action(self,data):
         '''任务详情'''
         taskid = data.get('taskid')
@@ -784,6 +784,7 @@ class ApiAction(object):
 
         MS = models.ScanTask
         MB = models.BugResult
+        MT = models.ScanHostPortTemp 
 
         R = MS.get(MS.task_id == taskid)
         buglist = [{
@@ -794,7 +795,17 @@ class ApiAction(object):
                         .select()
                         .where(MB.taskid == R)
                         .order_by(MB.updatedate))]
+        hostlist = [{
+            'hostid'    :str(h.host_id),
+            'host'      :str(h.host),
+            'port'      :str(h.port), 
+            'service'   :str(h.service_name),
+            'softver'   :''.join(str(h.soft_ver).split(',')),} \
+            for h in (MT.select()
+                        .where(MT.taskid == R)
+                        .order_by(MT.updatedate))]
         return {'buglist'   :buglist,
+                'hostlist'  :hostlist,
                 'taskid'    :str(R.task_id),
                 'taskcode'  :str(R.task_code),
                 'taskhost'  :str(R.task_host),
@@ -809,6 +820,39 @@ class ApiAction(object):
                 'finishdate':str(R.finishdate),
             }
 
+    def _taskinfoferify_action(self,data):
+        '''任务结果审核'''
+        hostids = data.get('hostid',[])
+
+        MT = models.ScanHostPortTemp 
+        MH = models.HostResult 
+        MP = models.PortResult 
+
+        for hostid in hostids:
+            try:
+                Q = MT.get(MT.host_id == hostid)
+                RH,created      = MH.get_or_create(projectid = Q.projectid, host_ip=Q.host)
+                RH.userid       = Q.projectid.project_user
+                RH.host_name    = Q.host_name
+                RH.mac_addr     = Q.mac_addr
+                RH.note         = Q.note
+                RH.os_type      = Q.os_type
+                RH.updatedate   = datetime.datetime.now()
+                RH.save()
+                RP,created      = MP.get_or_create(hostid=RH,host=RH.host_ip,port=Q.port)
+                RP.port_type    = Q.port_type
+                RP.port_state   = Q.port_state
+                RP.service_name = Q.service_name
+                RP.soft_name    = Q.soft_name
+                RP.soft_type    = Q.soft_type
+                RP.soft_ver     = Q.soft_ver
+                RP.response     = Q.response
+                RP.updatedate   = datetime.datetime.now()
+                RP.save()
+                MT.delete().where(MT.host_id == hostid).execute()
+            except MT.DoesNotExist:
+                continue 
+        
 
 #####################漏洞管理########################################
     @Authenticated(1)

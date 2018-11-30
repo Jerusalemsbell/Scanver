@@ -180,7 +180,33 @@ class BaseScan(object):
 
     def writehost(self,ret):
         '''写入端口扫描结果'''
-        for host,value in ret.items():
+        isverify = bool(self.args.get('isverify',1)) #人工审核
+
+        if isverify:
+          for host,value in ret.items():
+            for host,port,protocol,state,service,product,extrainfo,version,data in value['ports']:
+                RH,created      = models.ScanHostPortTemp.get_or_create(
+                                    taskid = self.Q
+                                    host = host,
+                                    port = port)
+                #RH.host         = host 
+                #RH.port         = port
+                RH.host_name    = value['hostname']
+                #RH.os_version   = value['status']
+                RH.mac_addr     = value['mac']
+                RH.note         = value['status']
+                RH.os_type      = value['ostype']
+                RH.port_type    = protocol
+                RH.port_state   = state
+                RH.service_name = service
+                RH.soft_name    = product
+                RH.soft_type    = extrainfo
+                RH.soft_ver     = version
+                RH.response     = str(data)
+                RH.updatedate   = datetime.datetime.now()
+                RH.save()
+        else:
+          for host,value in ret.items():
             RH,created      = models.HostResult.get_or_create(projectid = self.Q.projectid, host_ip = host)
             RH.userid       = self.Q.projectid.project_user
             RH.host_name    = value['hostname']
@@ -204,11 +230,11 @@ class BaseScan(object):
 
     def portscan(self,target):
         '''端口扫描'''
-        write = int(self.args.get('write',1))
-        ping = int(self.args.get('ping',0))
+        write = bool(self.args.get('write',1))
+        ping = bool(self.args.get('ping',0))
         threads = int(self.args.get('threads',100))
         timeout = int(self.args.get('timeout',5))
-        isfilter = int(self.args.get('isfilter'),0)
+        isfilter = bool(self.args.get('isfilter'),0)
         ports = self.args.get('port',None)
         block = self.args.get('block',[])
 
