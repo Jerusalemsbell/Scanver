@@ -152,6 +152,29 @@ class ScanTask(BaseModel):
     createdate  = orm.DateTimeField(default = datetime.datetime.now)        #创建时间
     finishdate  = orm.DateTimeField(default = datetime.datetime.now)        #1-表示删除该任务
 
+class ScanHostPortTemp(BaseModel):
+    '''扫描任务结果临时表'''
+    projectid   = orm.ForeignKeyField(Project, related_name = 'HostResult_projectid',null = True,)
+    userid      = orm.ForeignKeyField(User, related_name = 'HostResult_userid',null = True,)
+    taskid      = orm.ForeignKeyField(ScanTask, related_name = 'HostResult_taskid',null = True,)
+    host_id     = orm.CharField(unique = True, max_length = 32, default = generateid)
+    host        = orm.CharField() 
+    port        = orm.CharField()                                #主机ip
+    host_name   = orm.CharField(null = True, default = '')       #主机名
+    os_type     = orm.CharField(null = True, default = '')       #系统类型
+    os_version  = orm.CharField(null = True, default = '')       #系统版本
+    mac_addr    = orm.CharField(null = True, default = '')       #mac地址
+    phy_addr    = orm.CharField(null = True, default = '')       #物理地址
+    port_type   = orm.CharField(null = True, default = '')       #端口类型 tcp/udp
+    port_state  = orm.CharField(null = True, default = '')       #端口状态 open/close/filter
+    service_name= orm.CharField(null = True, default = '')       #服务名称 http/mssql/ssh 。。
+    soft_name   = orm.CharField(null = True, default = '')       #中间件名称
+    soft_type   = orm.CharField(null = True, default = '')       #中间件类型
+    soft_ver    = orm.CharField(null = True, default = '')       #中间件版本
+    response    = orm.TextField(null = True, default = '')       #原始返回包
+    isconfirm   = orm.BooleanField(default = False)              #人工审核
+    updatedate  = orm.DateTimeField(default = datetime.datetime.now)
+
 class HostResult(BaseModel):
     '''资产管理表'''
     projectid   = orm.ForeignKeyField(Project, related_name = 'HostResult_projectid',null = True,)
