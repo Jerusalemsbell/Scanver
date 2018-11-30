@@ -2,6 +2,7 @@
 # encoding=utf-8
 #codeby     道长且阻
 #email      ydhcui@suliu.net/QQ664284092
+#https://github.com/ydhcui/Scanver
 
 import socket
 import re
@@ -76,14 +77,7 @@ class BaseScan(object):
         self.T = app.AsyncResult(taskid)
         self.settings = {}
         self.target = None
-        self.args = {}
-        av = {}
-        for d in str(self.Q.task_args).strip().split():
-            if d is None or d == 'None':
-                continue
-            d = d[1:].split('=')
-            av[d[0]] = d[1]
-        self.args = av
+        self.args = json.loads(self.Q.task_args)
         self.target = str(self.Q.task_host).strip()
         '''
         int(self.args.get('filter',1))      #是否使用过滤
@@ -98,6 +92,7 @@ class BaseScan(object):
         '''
     def scan(self):
         pass
+
     def set_settings(self,*args,**kwargs):
         self.settings.update(kwargs)
 
@@ -213,9 +208,18 @@ class BaseScan(object):
         ping = int(self.args.get('ping',0))
         threads = int(self.args.get('threads',100))
         timeout = int(self.args.get('timeout',5))
+        isfilter = int(self.args.get('isfilter'),0)
         ports = self.args.get('port',None)
+        block = self.args.get('block',[])
 
         logging.info('[portscan][host:%s][port:%s][write:%s][ping:%s][threads:%s][timeout:%s]'%(target,ports,write,ping,threads,timeout))
+
+        target = set(gethosts(target))
+        target = target.difference(set(block))
+        if isfilter:
+            H = models.HostResult
+            hosts = set([(h.host_ip) for h in H.select().where(H.projectid = self.Q.projectid)])
+            target = target.difference(hosts)
 
         ps = PortScan(
                 target,

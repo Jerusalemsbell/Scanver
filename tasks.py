@@ -2,6 +2,7 @@
 # encoding=utf-8
 #codeby     道长且阻
 #email      @ydhcui/QQ664284092
+#https://github.com/ydhcui/Scanver
 
 from core import scan
 from service import app,TaskManage
@@ -45,6 +46,7 @@ def domainscan(Q):
     '''域名扫描'''
     s = scan.DomainScan(Q)
     s.start()
+
 @TaskManage.task(tasktype='web')
 def gettitle(Q):
     '''网页标题'''

@@ -2,6 +2,7 @@
 # encoding=utf-8
 #codeby     道长且阻
 #email      @ydhcui/QQ664284092
+#https://github.com/ydhcui/Scanver
 
 
 import ipaddress
@@ -65,6 +66,8 @@ def gethosts(hosts):
                 h[3] = str(i)
                 ret.append('.'.join(h))
             result = ret
+        elif ',' in hosts:
+            result = [h.strip() for h in hosts.split(',')]
         else:
             result = [hosts] if hosts else []
     return result

@@ -1,8 +1,8 @@
-#!/usr/bin/env python33+
-# -*- coding:utf-8 -*-
+#!/usr/bin/env python
+# encoding=utf-8
 #codeby     道长且阻
-#email      ydhcui@suliu.net/QQ664284092
-#website    http://www.suliu.net
+#email      @ydhcui/QQ664284092
+#https://github.com/ydhcui/Scanver
 
 import threading
 import queue

@@ -2,7 +2,7 @@
 # encoding=utf-8
 #codeby     道长且阻
 #email      @ydhcui/QQ664284092
-
+#https://github.com/ydhcui/Scanver
 
 from __future__ import division
 from functools import reduce
@@ -724,10 +724,10 @@ class ApiAction(object):
         task_host = data.get('task_host')
         task_name = data.get('task_name',[])
         task_level = data.get('task_level',3)
-        task_args = data.get('task_args')
+        task_args = data.get('task_args',{})
         task_note = data.get('task_note')
         task_node = data.get('task_node')
-
+        
         MS = models.ScanTask
         MP = models.Project
         MT = models.TaskType
@@ -1725,6 +1725,7 @@ class ApiAction(object):
         ret = []
         for R in query.paginate(page, size):
             ret.append({
+                'hostid'    : str(R.hostid.host_id),
                 'ment'      : str(R.hostid.userid.department.name),
                 'user'      : "%s(%s)"%(str(R.hostid.projectid.project_user.username),str(R.hostid.projectid.project_user.realname)),
                 'hostip'    : str(R.host),

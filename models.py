@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # encoding=utf-8
 #codeby     道长且阻
-#email      ydhcui@/QQ664284092
+#email      @ydhcui/QQ664284092
+#https://github.com/ydhcui/Scanver
 
 from lib import sql as orm
 from peewee import __exception_wrapper__
@@ -108,8 +109,7 @@ class User(BaseModel):
 
     @staticmethod
     def _create_password(raw,salt='\t\o\p\s\e\c'):
-        return hashlib.md5(hashlib.sha256(raw.encode()).hexdigest().encode()
-             + salt.encode()).hexdigest()
+        return hashlib.md5(raw.encode() + salt.encode()).hexdigest()
 
 class Project(BaseModel):
     '''项目/系统表'''
@@ -245,7 +245,7 @@ if __name__ == '__main__':
     init()
     R,cd = Department.get_or_create(name='test')
     user,cd = User.get_or_create(username='sc',group=3, department=R)
-    user.password=User._create_password('1111')
+    user.password = User._create_password(hashlib.sha256('1111').hexdigest())
     user.save()
     #user1,cd = User.get_or_create(username='admin',group=2,password=User._create_password('123456'))
     #user1,cd = User.get_or_create(username='user',group=1,password=User._create_password('123456'))

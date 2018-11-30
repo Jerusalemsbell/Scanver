@@ -2,6 +2,7 @@
 # encoding=utf-8
 #codeby     道长且阻
 #email      @ydhcui/QQ664284092
+#https://github.com/ydhcui/Scanver
 
 import re
 import socket
@@ -338,7 +339,7 @@ class Nscan(object):
 
 class PortScan(object):
     def __init__(self,hosts,ports=None,neping=None,threads=None,timeout=None):
-        self.hosts = gethosts(hosts)
+        self.hosts = hosts
         self.ports = getports(ports) if ports else getports(PORTS)
         self.neping = neping and True
         self.threads = threads or 100

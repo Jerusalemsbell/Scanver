@@ -1,7 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # encoding=utf-8
 #codeby     道长且阻
 #email      @ydhcui/QQ664284092
+#https://github.com/ydhcui/Scanver
 import os
 import sys
 import time

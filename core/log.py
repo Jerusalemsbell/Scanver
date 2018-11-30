@@ -2,6 +2,7 @@
 # encoding=utf-8
 #codeby     道长且阻
 #email      ydhcui@suliu.net/QQ664284092
+#https://github.com/ydhcui/Scanver
 
 import logging as logg
 import sys

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # coding=utf-8
+#https://github.com/ydhcui/Scanver
 
 '''
 this aim to crack the port such as ssh, mssql, mysql, vnc and so on

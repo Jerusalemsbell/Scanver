@@ -2,6 +2,8 @@
 # encoding=utf-8
 #codeby     道长且阻
 #email      @ydhcui/QQ664284092
+#https://github.com/ydhcui/Scanver
+
 from lib.docxtpl import DocxTemplate,InlineImage,RichText
 from lib.docx import Document
 from lib.docx.shared import Mm, Inches, Pt
