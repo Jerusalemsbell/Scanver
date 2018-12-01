@@ -820,7 +820,7 @@ class ApiAction(object):
                 'finishdate':str(R.finishdate),
             }
     @Authenticated(2)
-    def _taskinfoferify_action(self,data):
+    def _taskinfoverify_action(self,data):
         '''任务结果审核'''
         hostids = data.get('hostids',[])
 
@@ -852,7 +852,15 @@ class ApiAction(object):
             except MT.DoesNotExist:
                 continue 
         
+    @Authenticated(2)
+    def _taskinfofinish_action(self,data):
+        '''任务结果审核'''
+        hostids = data.get('hostids',[])
 
+        MT = models.ScanHostPortTemp 
+
+        for hostid in hostids:
+            MT.delete().where(MT.host_id == hostid).execute()
 #####################漏洞管理########################################
     @Authenticated(1)
     def _buginfoget_action(self,data):

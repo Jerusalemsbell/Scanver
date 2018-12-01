@@ -24,6 +24,7 @@ app.conf.update(
     CELERY_IMPORTS          = ('tasks'),
     BROKER_URL              = 'redis://:%s@%s:%s/0'%(settings.REDIS['auth'],settings.REDIS['host'],settings.REDIS['port']),
     CELERY_RESULT_BACKEND   = 'redis://:%s@%s:%s/0'%(settings.REDIS['auth'],settings.REDIS['host'],settings.REDIS['port']),
+    CELERYD_MAX_TASKS_PER_CHILD = 100,#长时间运行Celery有可能发生内存泄露
 )
 
 class TaskManage(object):

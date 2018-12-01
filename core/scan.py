@@ -179,7 +179,7 @@ class BaseScan(object):
 
     def writehost(self,ret):
         '''写入端口扫描结果'''
-        isverify = bool(self.args.get('isverify',1)) #人工审核
+        isverify = bool(self.args.get('isverify',0)) #人工审核
         MS = models.ScanHostPortTemp
         MH = models.HostResult 
         MP = models.PortResult 
