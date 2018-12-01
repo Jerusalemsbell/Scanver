@@ -170,7 +170,7 @@ class ScanHostPortTemp(BaseModel):
     soft_type   = orm.CharField(null = True, default = '')       #中间件类型
     soft_ver    = orm.CharField(null = True, default = '')       #中间件版本
     response    = orm.TextField(null = True, default = '')       #原始返回包
-    isconfirm   = orm.BooleanField(default = False)              #人工审核
+    status      = orm.CharField(default = 'insert')                 #端口状态
     updatedate  = orm.DateTimeField(default = datetime.datetime.now)
 
 class HostResult(BaseModel):
@@ -264,10 +264,10 @@ if __name__ == '__main__':
         TaskType.get_or_create(task_name='handwork',task_desc=u'手工录入',task_type='-1')
         TaskType.get_or_create(task_name='automatic',task_desc=u'批量导入',task_type='-1')
     init()
-    #R,cd = Department.get_or_create(name='test')
-    #user,cd = User.get_or_create(username='sc',group=3, department=R)
-    #user.password = User._create_password(hashlib.sha256('1111').hexdigest())
-    #user.save()
+    R,cd = Department.get_or_create(name='test')
+    user,cd = User.get_or_create(username='sc',group=3, department=R)
+    user.password = User._create_password(hashlib.sha256('1111'.encode()).hexdigest())
+    user.save()
     #user1,cd = User.get_or_create(username='admin',group=2,password=User._create_password('123456'))
     #user1,cd = User.get_or_create(username='user',group=1,password=User._create_password('123456'))
     #Project.get_or_create(project_id='@',project_user=user,project_name='互联网项目')

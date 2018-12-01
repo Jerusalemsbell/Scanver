@@ -726,8 +726,7 @@ class ApiAction(object):
         task_level = data.get('task_level',3)
         task_args = json.dumps(data.get('task_args',{}))
         task_note = data.get('task_note')
-        task_node = data.get('task_node')
-        
+        task_node = data.get('task_node',[])
         MS = models.ScanTask
         MP = models.Project
         MT = models.TaskType
@@ -740,7 +739,7 @@ class ApiAction(object):
             except:
                 continue
             for host in task_host.split():
-                if task_node:
+                if task_node and task_node[0]: #emmm 出现[""]这种情况识别为真
                     for node in task_node:
                         RC = MC.get(MC.node_id == task_node)
                         R = MS.create(
@@ -775,7 +774,7 @@ class ApiAction(object):
             R1.delete_instance()
             TaskManage.stoptask(task_pid)
             
-    #@Authenticated(2)
+    @Authenticated(2)
     def _scanntaskinfo_action(self,data):
         '''任务详情'''
         taskid = data.get('taskid')
@@ -798,7 +797,8 @@ class ApiAction(object):
         hostlist = [{
             'hostid'    :str(h.host_id),
             'host'      :str(h.host),
-            'port'      :str(h.port), 
+            'port'      :str(h.port),
+            'status'    :str(h.status), 
             'service'   :str(h.service_name),
             'softver'   :''.join(str(h.soft_ver).split(',')),} \
             for h in (MT.select()
@@ -819,10 +819,10 @@ class ApiAction(object):
                 'createdate':str(R.createdate),
                 'finishdate':str(R.finishdate),
             }
-
+    @Authenticated(2)
     def _taskinfoferify_action(self,data):
         '''任务结果审核'''
-        hostids = data.get('hostid',[])
+        hostids = data.get('hostids',[])
 
         MT = models.ScanHostPortTemp 
         MH = models.HostResult 
@@ -831,11 +831,10 @@ class ApiAction(object):
         for hostid in hostids:
             try:
                 Q = MT.get(MT.host_id == hostid)
-                RH,created      = MH.get_or_create(projectid = Q.projectid, host_ip=Q.host)
-                RH.userid       = Q.projectid.project_user
+                RH,created      = MH.get_or_create(projectid = Q.taskid.projectid, host_ip=Q.host)
+                RH.userid       = Q.taskid.projectid.project_user
                 RH.host_name    = Q.host_name
                 RH.mac_addr     = Q.mac_addr
-                RH.note         = Q.note
                 RH.os_type      = Q.os_type
                 RH.updatedate   = datetime.datetime.now()
                 RH.save()
@@ -849,7 +848,7 @@ class ApiAction(object):
                 RP.response     = Q.response
                 RP.updatedate   = datetime.datetime.now()
                 RP.save()
-                MT.delete().where(MT.host_id == hostid).execute()
+                Q.delete_instance()
             except MT.DoesNotExist:
                 continue 
         
@@ -1461,7 +1460,7 @@ class ApiAction(object):
                 sw = M.port.contains(keyword)
             query = query.join(M)
 
-        query = query.where(sw).group_by(MH.host_ip)
+        query = query.where(sw).group_by(MH.host_ip).order_by(-MH.updatedate)
         #print(query)
         result = {}
         result['current'] = page
@@ -1860,10 +1859,6 @@ class ApiAction(object):
             'msgstat'   :str(R.msgstate)
         }
 
-
-
-#################################################################################################3
-
 class BaseHandler(RequestHandler):
     def initialize(self):
         self.session = {}
@@ -1888,13 +1883,8 @@ class BaseHandler(RequestHandler):
     def get_current_user(self):
         return True
 
-
-#####################################################################################################
-
 @Route(r'/api.php')
 class ApiHandler(BaseHandler,ApiAction):
-
-######################################################################################
     def _heartbeat_action(self,data):
         '''安全心跳包
         1、发送该心跳包后要使用返回的token才能继续请求
@@ -1905,7 +1895,6 @@ class ApiHandler(BaseHandler,ApiAction):
         self.json['code'] = 502
         self.json['error'] = data.get("msg","BurpSuite Rce Exp Mdzz")
 
-######################################################################################
     @web.authenticated
     @web.asynchronous
     def post(self):
@@ -1974,12 +1963,6 @@ class ApiHandler(BaseHandler,ApiAction):
             data +=  chr(ord(key[i]) ^ ord(m_key))
         return "".join(data)
 
-
-
-
-#############################################################################################
-
-
 @Route(r'/upload.php')
 class UploadHandler(BaseHandler):
     @web.authenticated
@@ -2018,10 +2001,6 @@ class UploadHandler(BaseHandler):
                 ret['result'].append(fd)
         self.write(ret)
         self.finish()
-
-
-
-####################################################################################################################
 
 @Route(r'/report.php')
 class ReportHandler(BaseHandler):
@@ -2125,13 +2104,13 @@ class ReportHandler(BaseHandler):
             readreport(path)
         elif fty=='json':
             self.set_header('Content-Type','application/json')
-            self.write(json.loads(projectinfo))
+            self.write(json.dumps(projectinfo,indent=4))
         self.finish()
 
 ###########################################################################################################
 
 @Route(r'/.*')
-class IndexHandler(BaseHandler,ApiAction):
+class IndexHandler(BaseHandler):
     def get(self):
         self.render("index.html")
 
@@ -2147,7 +2126,6 @@ class Application(web.Application):
     def __init__(self):
         web.Application.__init__(
             self, handlers = Route.routes(), **settings.SETTINGS)
-
 
 def main():
     from tornado import ioloop

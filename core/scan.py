@@ -50,7 +50,6 @@ class BaseScan(object):
         '''获取http服务的headers信息'''
         h = str(q.host)
         p = str(q.port)
-        print(h,p)
         pto = 'https' if ('443' in p or str(q.status_code) == '400')  else 'http'
         url = '%s://%s:%s/'%(pto, h, p)
         w = BaseWebSite(url,load=False)
@@ -136,7 +135,7 @@ class BaseScan(object):
     def payloadverify(self,plug,host):
         '''插件验证'''
         #logging.info('check %s-%s-%s'%(plug.__class__,host.host,host.port))               
-        filter = int(self.args.get('filter',1)) #是否需要过滤、
+        filter = bool(self.args.get('filter',1)) #是否需要过滤、
         try:
             socket.setdefaulttimeout(360)
             if not filter or plug.filter(host):
@@ -181,30 +180,37 @@ class BaseScan(object):
     def writehost(self,ret):
         '''写入端口扫描结果'''
         isverify = bool(self.args.get('isverify',1)) #人工审核
+        MS = models.ScanHostPortTemp
+        MH = models.HostResult 
+        MP = models.PortResult 
 
+        status = 'insert'
+        '''
+        emmm 暂时只写增加，
+        '''
         if isverify:
-          for host,value in ret.items():
-            for host,port,protocol,state,service,product,extrainfo,version,data in value['ports']:
-                RH,created      = models.ScanHostPortTemp.get_or_create(
-                                    taskid = self.Q,
-                                    host = host,
-                                    port = port)
-                #RH.host         = host 
-                #RH.port         = port
-                RH.host_name    = value['hostname']
-                #RH.os_version   = value['status']
-                RH.mac_addr     = value['mac']
-                RH.note         = value['status']
-                RH.os_type      = value['ostype']
-                RH.port_type    = protocol
-                RH.port_state   = state
-                RH.service_name = service
-                RH.soft_name    = product
-                RH.soft_type    = extrainfo
-                RH.soft_ver     = version
-                RH.response     = str(data)
-                RH.updatedate   = datetime.datetime.now()
-                RH.save()
+            for host,value in ret.items():
+                for host,port,protocol,state,service,product,extrainfo,version,data in value['ports']:
+                    RS,created      = MS.get_or_create(
+                                        taskid = self.Q,
+                                        host = host,
+                                        port = port)
+                    #RS.host         = host 
+                    #RS.port         = port
+                    RS.host_name    = value['hostname']
+                    #RS.os_version   = value['status']
+                    RS.mac_addr     = value['mac']
+                    RS.note         = value['status']
+                    RS.os_type      = value['ostype']
+                    RS.port_type    = protocol
+                    RS.port_state   = state
+                    RS.service_name = service
+                    RS.soft_name    = product
+                    RS.soft_type    = extrainfo
+                    RS.soft_ver     = version
+                    RS.response     = str(data)
+                    RS.status       = status
+                    RS.save()
         else:
           for host,value in ret.items():
             RH,created      = models.HostResult.get_or_create(projectid = self.Q.projectid, host_ip = host)
@@ -234,7 +240,7 @@ class BaseScan(object):
         ping = bool(self.args.get('ping',0))
         threads = int(self.args.get('threads',100))
         timeout = int(self.args.get('timeout',5))
-        isfilter = bool(self.args.get('isfilter'),0)
+        isfilter = bool(self.args.get('isfilter',0))
         ports = self.args.get('port',None)
         block = self.args.get('block',[])
 
