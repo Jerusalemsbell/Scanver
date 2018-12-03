@@ -1191,7 +1191,7 @@ class ApiAction(object):
             R = M.get(M.uid == data.get('uid'))
         except M.DoesNotExist:
             R = M()
-        R.department = MD.get(MD.bid == data.get('department'))
+        R.department = MD.get(MD.bid == data.get('depid'))
         R.group = data.get('group',1)
         R.username = data.get('username')
         R.company = data.get('company','')
@@ -1249,6 +1249,7 @@ class ApiAction(object):
                 'group':str(Q.group),
                 'company':str(Q.company),
                 'department':str(Q.department.name),
+                'depid':str(Q.department.bid),
                 'realname':str(Q.realname),
                 'phone':str(Q.phone),
                 'email':str(Q.email),
@@ -1857,7 +1858,9 @@ class ApiAction(object):
         MU = models.User
         RU = MU.get(MU.uid == self.session['userid'])
         R = M.get(M.msgid == msgid,M.recvid == RU)
-
+        R.msgstate = 1
+        R.recvdate = datetime.datetime.now()
+        R.save()
         return {
             'msgid'     :str(R.msgid),
             'title'     :str(R.msgtitle),

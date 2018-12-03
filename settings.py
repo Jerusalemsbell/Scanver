@@ -10,7 +10,7 @@ import sys
 sys.path.append('./lib')
 import configparser
 
-DEBUG = False
+DEBUG = True
 CONFNAME = 'conf.ini'
 
 #获取脚本文件的当前路径
