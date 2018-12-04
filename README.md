@@ -5,7 +5,7 @@
 后端使用celery进行任务调度  
 
 安装：
-  python3 -m pip -r requirements.txt  
+  python3 -m pip install -r requirements.txt  
   
 初始化：  
   python3 models.py   
