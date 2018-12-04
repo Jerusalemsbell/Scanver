@@ -443,5 +443,8 @@ class DomainScan(BaseScan):
 
 class GetTitle(BaseScan):
     def scan(self):
-        self.gethttptitle()
+        import time
+        time.sleep(3)
+
+        #self.gethttptitle()
 

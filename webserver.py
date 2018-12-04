@@ -22,6 +22,7 @@ from tornado import web
 from tornado.web import RequestHandler
 from tornado.websocket import WebSocketHandler
 import xlrd
+import redis
 import settings
 import models
 from service import TaskManage
@@ -57,8 +58,14 @@ class MemorySession(object):
         'projectid':'@'
     } if DEBUG else {}
 
-    def __init__(self, token):
+    def __init__(self, token,options=None):
         self.session = token
+        '''
+        self.redis = redis.StrictRedis(
+            host = options['rhost'],
+            port = options['rport'], 
+            password = options['rpass']) if options else None
+        '''
     def __setitem__(self, key, value):
         if self.session not in self._session_data.keys():
             self.session = self.generate()

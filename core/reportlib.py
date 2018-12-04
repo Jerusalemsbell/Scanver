@@ -7,7 +7,7 @@
 from lib.docxtpl import DocxTemplate,InlineImage,RichText
 from lib.docx import Document
 from lib.docx.shared import Mm, Inches, Pt
-from lib.jinja2 import Environment
+from jinja2 import Environment
 import time
 import re
 import uuid

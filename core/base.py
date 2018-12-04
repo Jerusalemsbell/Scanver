@@ -5,8 +5,8 @@
 #https://github.com/ydhcui/Scanver
 
 
-import requests
-from requests import Session,Request  
+from lib import requests
+from lib.requests import Session,Request  
 import re
 import socket
 import urllib.parse as urlparse

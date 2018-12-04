@@ -13,7 +13,7 @@ import traceback
 import queue
 import threading
 import urllib.parse as urlparse
-from requests import Session
+from lib.requests import Session
 from core.util import CoroutinePool as ThreadPool
 from core.cmsfind import AppFind
 from core.log import logging
