@@ -3,12 +3,16 @@
 前台Web使用tornado开出api接口  
 
 后端使用celery进行任务调度  
+
 安装：
-  python3 -m pip -r requirements.txt
+  python3 -m pip install -r requirements.txt  
+  
 初始化：  
   python3 models.py   
   python3 task.py init 
+  
 默认密码sc/1111
+
 开启web服务：python3 webserver.py --port=8315 
 
 开启扫描服务：python3 task.py worker --loglevel=INFO -c 4
