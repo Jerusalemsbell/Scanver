@@ -183,14 +183,29 @@ class BaseScan(object):
         MS = models.ScanHostPortTemp
         MH = models.HostResult 
         MP = models.PortResult 
-
-        status = 'insert'
-        '''
-        emmm 暂时只写增加，
-        '''
+        
         if isverify:
             for host,value in ret.items():
+                ports = {}
+                try:
+                    RH = MH.get(MP.projectid==self.Q.projectid, MP.host_ip==host)
+                    #取原来的端口数据
+                    for R in MP.select().where(MP.hostid==RH, MP.host==host)
+                        ports[str(Q.port)]={
+                            "service_name"  :str(R.service_name),
+                            "soft_name"     :str(R.soft_name),
+                            "soft_type"     :str(R.soft_type),
+                            "soft_ver"      :str(R.soft_ver),
+                            "response"      :str(R.response),
+                        }
+                except MH.DoesNotExist:
+                    pass
                 for host,port,protocol,state,service,product,extrainfo,version,data in value['ports']:
+                    if port in ports.keys():
+                        status = 'update'
+                        ports.pop(port)
+                    else:
+                        status = 'insert'
                     RS,created      = MS.get_or_create(
                                         taskid = self.Q,
                                         host = host,
@@ -211,6 +226,20 @@ class BaseScan(object):
                     RS.response     = str(data)
                     RS.status       = status
                     RS.save()
+                #剩下的都是删除的
+                for port in ports.keys():
+                    RS,created      = MS.get_or_create(
+                                        taskid = self.Q,
+                                        host = host,
+                                        port = port)
+                    RS.service_name = ports[port]['service_name']
+                    RS.soft_name    = ports[port]['soft_name']
+                    RS.soft_type    = ports[port]['soft_type']
+                    RS.soft_ver     = ports[port]['soft_ver']
+                    RS.response     = ports[port]['response']
+                    RS.status       = 'delete'
+                    RS.save()
+
         else:
           for host,value in ret.items():
             RH,created      = models.HostResult.get_or_create(projectid = self.Q.projectid, host_ip = host)

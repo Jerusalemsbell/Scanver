@@ -15,7 +15,7 @@ class SshNoAuth(BaseHostPlugin):
     def filter(self,host):
         return host.port == 22 or host.service == 'ssh'
 
-    def verify(self,host,user='',pwd='',timeout=5):
+    def verify(self,host,user='root',pwd='',timeout=5):
         socket.setdefaulttimeout(timeout)
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())

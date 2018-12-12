@@ -5,19 +5,20 @@
 #https://github.com/ydhcui/Scanver
 
 from lib import sql as orm
-from peewee import __exception_wrapper__
 from settings import DATABASE
 import time
 import datetime
 import uuid
 import hashlib
 
-class MySQLDatabase(orm.MySQLDatabase):
+from peewee import * 
+from peewee import __exception_wrapper__
+class RetryOperationalError(object):
     '''解决mysql连接超时'''
     def execute_sql(self, sql, params=None, commit=True):
         try:
-            cursor = super(orm.MySQLDatabase, self).execute_sql(sql, params, commit)
-        except orm.OperationalError:
+            cursor = super(RetryOperationalError, self).execute_sql(sql, params, commit)
+        except OperationalError:
             if not self.is_closed():
                 self.close()
             with __exception_wrapper__:
@@ -26,9 +27,11 @@ class MySQLDatabase(orm.MySQLDatabase):
                 if commit and not self.in_transaction():
                     self.commit()
         return cursor
+class RetryMySQLDatabase(RetryOperationalError, orm.MySQLDatabase):
+    pass
 
 if DATABASE['datatype']=='mysql':
-    userdata = MySQLDatabase(
+    userdata = RetryMySQLDatabase(
         DATABASE['dataname'],
         host     = DATABASE['datahost'],
         port     = DATABASE['dataport'],

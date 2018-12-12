@@ -845,16 +845,20 @@ class ApiAction(object):
                 RH.os_type      = Q.os_type
                 RH.updatedate   = datetime.datetime.now()
                 RH.save()
-                RP,created      = MP.get_or_create(hostid=RH,host=RH.host_ip,port=Q.port)
-                RP.port_type    = Q.port_type
-                RP.port_state   = Q.port_state
-                RP.service_name = Q.service_name
-                RP.soft_name    = Q.soft_name
-                RP.soft_type    = Q.soft_type
-                RP.soft_ver     = Q.soft_ver
-                RP.response     = Q.response
-                RP.updatedate   = datetime.datetime.now()
-                RP.save()
+                
+                if Q.status == 'delete':
+                    MP.delete().where(MP.hostid==RH,MP.host==Q.host,MP.port==Q.port).execute()
+                else:
+                    RP,created      = MP.get_or_create(hostid=RH,host=RH.host_ip,port=Q.port)
+                    RP.port_type    = Q.port_type
+                    RP.port_state   = Q.port_state
+                    RP.service_name = Q.service_name
+                    RP.soft_name    = Q.soft_name
+                    RP.soft_type    = Q.soft_type
+                    RP.soft_ver     = Q.soft_ver
+                    RP.response     = Q.response
+                    RP.updatedate   = datetime.datetime.now()
+                    RP.save()
                 Q.delete_instance()
             except MT.DoesNotExist:
                 continue 
