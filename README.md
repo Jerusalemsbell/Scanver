@@ -22,7 +22,7 @@
 截图：漏洞扫描结果  
 ![img](https://github.com/ydhcui/Scanver/blob/master/QQ%E6%88%AA%E5%9B%BE20181212115011.png?raw=true)  
 截图：扫描任务管理  
-![img](https://github.com/ydhcui/Scanver/blob/master/QQ%E6%88%AA%E5%9B%BE20181212115122.png?raw=true） 
+![img](https://github.com/ydhcui/Scanver/blob/master/QQ%E6%88%AA%E5%9B%BE20181212115122.png?raw=true)  
 截图：资产扫描结果
 ![img](https://github.com/ydhcui/Scanver/blob/master/QQ%E6%88%AA%E5%9B%BE20181114113907.png?raw=true)  
 截图：后台celery日志
