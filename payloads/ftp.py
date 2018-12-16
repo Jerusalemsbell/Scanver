@@ -10,20 +10,21 @@ import re
 import socket
 
 class FtpWeakPass(BaseHostPlugin):
-    bugname = "Ftp 未授权访问"
+    bugname = "Ftp未授权访问"
     bugrank = "高危"
 
     def filter(self,host):
         return host.port == 21 or host.service == 'ftp'
 
     @brute
-    def verify(self,host,user='ftp',pwd='',timeout=5):
+    def verify(self,host,user='anonymous',pwd='',timeout=5):
         socket.setdefaulttimeout(timeout)
         ftp = ftplib.FTP()
         try:
             ftp.connect(host.host,int(host.port))
             ftp.login(user,pwd)
-            self.bugaddr = "%s:%s@%s:%s"%(user,pwd,host.host,host.port)
+            self.bugaddr = "ftp://%s:%s@%s:%s"%(user,pwd,host.host,host.port)
+            self.bugres = '\n'.join(ftp.nlst())
             return True
         except Exception as e:
             print(e)

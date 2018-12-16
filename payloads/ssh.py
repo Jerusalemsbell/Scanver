@@ -21,8 +21,10 @@ class SshNoAuth(BaseHostPlugin):
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         try:
             ssh.connect(hostname=host.host,port=host.port,username=user,password=pwd,timeout=timeout)
+            stdin,stdout,stderr = ssh.exec_command('ls')
             self.bugaddr = "%s:%s@%s:%s"%(user,pwd,host.host,host.port)
             self.bugreq = "user:%s,pwd:%s" % (user,pwd)
+            self.bugres = str(stdout.read())
             return True
         except Exception as e:
             print(e)
