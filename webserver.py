@@ -18,9 +18,12 @@ import uuid
 import traceback
 import hashlib
 import binascii
-from tornado import web
+from tornado import web,gen
 from tornado.web import RequestHandler
 from tornado.websocket import WebSocketHandler
+from tornado.concurrent import run_on_executor
+from concurrent.futures import ThreadPoolExecutor
+
 import xlrd
 import redis
 import settings
@@ -63,7 +66,7 @@ class MemorySession(object):
         '''
         self.redis = redis.StrictRedis(
             host = options['rhost'],
-            port = options['rport'], 
+            port = options['rport'],
             password = options['rpass']) if options else None
         '''
     def __setitem__(self, key, value):
@@ -436,7 +439,9 @@ class ApiAction(object):
 
     @Authenticated(1)
     def _projectget_action(self,data):
-        '''获取用户项目列表'''
+        '''获取用户项目列表
+        emmm 一个请求33333ms 搞毛啊
+        '''
         keyword = data.get('keyword')
         page = data.get('page',1)
         size = data.get('size',10)
@@ -780,7 +785,7 @@ class ApiAction(object):
             R2 = MB.delete().where(MB.taskid==R1).execute()
             R1.delete_instance()
             TaskManage.stoptask(task_pid)
-            
+
     @Authenticated(2)
     def _scanntaskinfo_action(self,data):
         '''任务详情'''
@@ -790,7 +795,7 @@ class ApiAction(object):
 
         MS = models.ScanTask
         MB = models.BugResult
-        MT = models.ScanHostPortTemp 
+        MT = models.ScanHostPortTemp
 
         R = MS.get(MS.task_id == taskid)
         buglist = [{
@@ -805,7 +810,7 @@ class ApiAction(object):
             'hostid'    :str(h.host_id),
             'host'      :str(h.host),
             'port'      :str(h.port),
-            'status'    :str(h.status), 
+            'status'    :str(h.status),
             'service'   :str(h.service_name),
             'softver'   :''.join(str(h.soft_ver).split(',')),} \
             for h in (MT.select()
@@ -831,9 +836,9 @@ class ApiAction(object):
         '''任务结果审核'''
         hostids = data.get('hostids',[])
 
-        MT = models.ScanHostPortTemp 
-        MH = models.HostResult 
-        MP = models.PortResult 
+        MT = models.ScanHostPortTemp
+        MH = models.HostResult
+        MP = models.PortResult
 
         for hostid in hostids:
             try:
@@ -845,7 +850,7 @@ class ApiAction(object):
                 RH.os_type      = Q.os_type
                 RH.updatedate   = datetime.datetime.now()
                 RH.save()
-                
+
                 if Q.status == 'delete':
                     MP.delete().where(MP.hostid==RH,MP.host==Q.host,MP.port==Q.port).execute()
                 else:
@@ -861,14 +866,14 @@ class ApiAction(object):
                     RP.save()
                 Q.delete_instance()
             except MT.DoesNotExist:
-                continue 
-        
+                continue
+
     @Authenticated(2)
     def _taskinfofinish_action(self,data):
         '''任务结果审核'''
         hostids = data.get('hostids',[])
 
-        MT = models.ScanHostPortTemp 
+        MT = models.ScanHostPortTemp
 
         for hostid in hostids:
             MT.delete().where(MT.host_id == hostid).execute()
@@ -1305,7 +1310,7 @@ class ApiAction(object):
                 self.json['error'] = '密码错误'
         else:
             Q.realname = realname
-            Q.phone = phone 
+            Q.phone = phone
         return Q.save()
 
 #######################插件管理############################################
@@ -1882,6 +1887,8 @@ class ApiAction(object):
         }
 
 class BaseHandler(RequestHandler):
+    executor = ThreadPoolExecutor(100)
+
     def initialize(self):
         self.session = {}
         if models.userdata.is_closed():
@@ -1917,9 +1924,8 @@ class ApiHandler(BaseHandler,ApiAction):
         self.json['code'] = 502
         self.json['error'] = data.get("msg","BurpSuite Rce Exp Mdzz")
 
-    @web.authenticated
-    @web.asynchronous
-    def post(self):
+    @run_on_executor
+    def hander(self):
         """ 全局处理函数，传入json
             形式如下
                 {'c':'action', 'd':{data}}
@@ -1946,6 +1952,12 @@ class ApiHandler(BaseHandler,ApiAction):
             self.json['code'] = 404
             self.json['error'] = '找不到该方法'
         self.set_status(self.json['code'])
+
+    @web.authenticated
+    @web.asynchronous
+    @gen.coroutine
+    def post(self):
+        yield self.hander()
         self.write(self._encryptdata(self.json))
         self.finish()
 
@@ -1985,10 +1997,13 @@ class ApiHandler(BaseHandler,ApiAction):
             data +=  chr(ord(key[i]) ^ ord(m_key))
         return "".join(data)
 
+
+
 @Route(r'/upload.php')
 class UploadHandler(BaseHandler):
     @web.authenticated
     @web.asynchronous
+    @gen.coroutine
     def get(self):
         '''文件下载'''
         fid = self.get_argument('fid')
@@ -2001,8 +2016,9 @@ class UploadHandler(BaseHandler):
             self.write(fr.read())
         self.finish()
 
-    #@web.authenticated
+    @web.authenticated
     @web.asynchronous
+    @gen.coroutine
     def post(self):
         def _writefile(meta):
             file_id = str(uuid.uuid4().hex)
@@ -2024,13 +2040,17 @@ class UploadHandler(BaseHandler):
         self.write(ret)
         self.finish()
 
+
 @Route(r'/report.php')
 class ReportHandler(BaseHandler):
+    @web.authenticated
     @web.asynchronous
+    @gen.coroutine
     def get(self):
         self.post()
-
+    @web.authenticated
     @web.asynchronous
+    @gen.coroutine
     def post(self):
         '''报告生成'''
         def readreport(path):
@@ -2093,7 +2113,7 @@ class ReportHandler(BaseHandler):
             projectstate = '严重状态'
         if '紧急' in state:
             projectstate = '紧急状态'
-        
+
         projectinfo = {
             'projectid'     :ormstr(projectid.project_id,sv=True),
             'projectname'   :ormstr(projectid.project_name,sv=True),

