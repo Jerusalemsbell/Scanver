@@ -190,7 +190,7 @@ class BaseScan(object):
                 try:
                     RH = MH.get(MP.projectid==self.Q.projectid, MP.host_ip==host)
                     #取原来的端口数据
-                    for R in MP.select().where(MP.hostid==RH, MP.host==host)
+                    for R in MP.select().where(MP.hostid==RH, MP.host==host):
                         ports[str(Q.port)]={
                             "service_name"  :str(R.service_name),
                             "soft_name"     :str(R.soft_name),
