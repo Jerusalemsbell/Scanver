@@ -7,6 +7,8 @@
 安装：
   python3 -m pip install -r requirements.txt  
   
+分布式部署时可以分别在conf.ini 里面设置nodeid值；然后在新建任务选项里面选择指定扫描节点，如果不指定默认是在当前节点。
+
 初始化：  
   python3 models.py   
   python3 task.py init 
