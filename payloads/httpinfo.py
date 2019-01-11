@@ -111,6 +111,7 @@ class DirectoryListing(BaseHttpPlugin):
         re.compile(r'">[To Parent Directory]</a><br><br>',re.I),
         re.compile(r'&lt;dir&gt; <A HREF="/',re.I),
         re.compile(r'''<pre><A HREF="/">\[''',re.I),
+        re.compile(r'''<title>Directory Listing For''',re.I),
     )
 
     bugname = '列目录漏洞'

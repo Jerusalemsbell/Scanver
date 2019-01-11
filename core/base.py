@@ -6,7 +6,7 @@
 
 
 from lib import requests
-from lib.requests import Session,Request  
+from lib.requests import Session,Request
 import re
 import socket
 import urllib.parse as urlparse
@@ -82,7 +82,7 @@ class BaseWebSite(BaseHost):
         xpoweredby3 = res.headers.get('X-Powered-By',self.xpoweredby)
         xpoweredby4 = self.findxpoweredby(res)
         self.xpoweredby = xpoweredby4 + '|' + self.xpoweredby if xpoweredby4 else xpoweredby3+'|'+self.xpoweredby
-        
+
     @staticmethod
     def findxpoweredby(res):
         xpoweredby = ' '
@@ -163,13 +163,13 @@ class BaseRequest(object):
             self.data   = {}
         else:
             self.data   = data
-        self.auth   = auth 
+        self.auth   = auth
         self.json   = json
         self.cookies= cookies
         self.proxy  = proxy
         self.files  = files or []
-        self.session= session or Session() 
-        
+        self.session= session or Session()
+
     def __repr__(self):
         s=[]
         s.append("%s %s %s"%(
@@ -207,7 +207,7 @@ class BaseRequest(object):
         res = self.session.send(req,proxies=self.proxy,verify=False)
         logging.info("%s-%s-%s"%(res.status_code,req.method,req.url))
         return res
-            
+
     def _diff(self):
         return (self.method,self.netloc,self.path,
             ''.join(self.params.keys()),
@@ -216,7 +216,7 @@ class BaseRequest(object):
         return self._diff() == req._diff()
 
     def __hash__(self):
-        return hash(self._diff_())
+        return hash(self._diff())
 
 class ConnectionError(requests.ConnectionError):
     pass

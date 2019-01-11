@@ -35,7 +35,7 @@ requests.packages.urllib3.disable_warnings()
 
 class BaseScan(object):
     @classmethod
-    def gethttptitle(self):    
+    def gethttptitle(self):
         MP = models.PortResult
         sw = MP.port_type == 'tcp'
         sw &= MP.service_name == 'http'
@@ -134,7 +134,7 @@ class BaseScan(object):
 
     def payloadverify(self,plug,host):
         '''插件验证'''
-        #logging.info('check %s-%s-%s'%(plug.__class__,host.host,host.port))               
+        #logging.info('check %s-%s-%s'%(plug.__class__,host.host,host.port))
         filter = bool(self.args.get('filter',1)) #是否需要过滤、
         try:
             socket.setdefaulttimeout(360)
@@ -181,16 +181,16 @@ class BaseScan(object):
         '''写入端口扫描结果'''
         isverify = bool(self.args.get('isverify',0)) #人工审核
         MS = models.ScanHostPortTemp
-        MH = models.HostResult 
-        MP = models.PortResult 
-        
+        MH = models.HostResult
+        MP = models.PortResult
+
         if isverify:
             for host,value in ret.items():
                 ports = {}
                 try:
                     RH = MH.get(MP.projectid==self.Q.projectid, MP.host_ip==host)
                     #取原来的端口数据
-                    for R in MP.select().where(MP.hostid==RH, MP.host==host)
+                    for R in MP.select().where(MP.hostid==RH, MP.host==host):
                         ports[str(Q.port)]={
                             "service_name"  :str(R.service_name),
                             "soft_name"     :str(R.soft_name),
@@ -210,7 +210,7 @@ class BaseScan(object):
                                         taskid = self.Q,
                                         host = host,
                                         port = port)
-                    #RS.host         = host 
+                    #RS.host         = host
                     #RS.port         = port
                     RS.host_name    = value['hostname']
                     #RS.os_version   = value['status']
