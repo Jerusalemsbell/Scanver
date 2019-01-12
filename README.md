@@ -16,8 +16,10 @@
 开启web服务：python3 webserver.py --port=8315 
 
 开启扫描服务：python3 task.py worker -c 4 --loglevel=INFO --logfile=./data/logs/celery.log 
-前端源码：https://github.com/ydhcui/scanui
-默认密码sc/1111
+前端源码：https://github.com/ydhcui/scanui  
+
+默认密码sc/1111  
+
 截图：扫描任务管理  
 ![img](https://github.com/ydhcui/Scanver/blob/master/QQ%E6%88%AA%E5%9B%BE20181212115122.png?raw=true) 
 截图：扫描任务详情  
